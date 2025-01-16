@@ -4,10 +4,7 @@ use rand::seq::SliceRandom;
 use anyhow::{anyhow, Result};
 use bili_video::Video;
 use serde::{Deserialize, Serialize};
-
-const PART_NAMES: [&str; 4] = ["longmen", "lord_loser", "ipartment", "feichai"];
-const PART_DIR: &str = "/Volumes/Getea/bili_cli/part";
-const PART_PATH: &str = "~/.bilibili/part.json";
+use settings::Settings;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Part {
@@ -22,19 +19,22 @@ impl Part {
 }
 
 pub fn init_part() -> Result<()> {
+    let stg = Settings::new()?;
     let mut parts: Vec<Part> = Vec::new();
-    for part_name in PART_NAMES{
-        let dirname = Path::new(&PART_DIR).join(part_name);
+    for part_name in &stg.part.names{
+        let dirname = stg.part.home().join(part_name);
         let dir = Path::new(&dirname);
         let mut videos: Vec<Video> = Vec::new();
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let filename = entry.file_name().into_string().unwrap();
+            // 过滤文件类型
             if !filename.ends_with("ts") {
                 continue;
             }
 
             let video = Video::from(entry.path())?;
+            // 过滤时间
             if video.duration > 180.0 {
                 continue;
             }
@@ -45,18 +45,16 @@ pub fn init_part() -> Result<()> {
         parts.push(part);
     }
 
-    let part_path = lazytool::expand_user(PART_PATH);
-    let writer = File::create(part_path)?;
+    let writer = File::create(Settings::part())?;
     serde_json::to_writer_pretty(&writer, &parts)?;
     Ok(())
 }
 
-pub fn get_rand_part_path(name: &str) -> Result<PathBuf> {
-    let part_path = lazytool::expand_user(PART_PATH);
-    let json_str = fs::read_to_string(part_path)?;
+pub fn get_rand_part_path(names: Vec<&str>) -> Result<PathBuf> {
+    let json_str = fs::read_to_string(Settings::part())?;
     let parts: Vec<Part> = serde_json::from_str(&json_str)?;
     for part in parts {
-        if part.name == name {
+        if names.contains(&part.name.as_str()) {
             let videos = part.videos;
             let mut rng = rand::thread_rng();
             let video = videos.choose(&mut rng).expect("rand part video failed");
@@ -65,5 +63,5 @@ pub fn get_rand_part_path(name: &str) -> Result<PathBuf> {
         }
     }
 
-    Err(anyhow!("Part: {} not found", name))
+    Err(anyhow!("Part: {:?} not found", names))
 }

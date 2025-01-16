@@ -16,3 +16,4 @@ lazycmd = "0.1.0"
 lazytool = { version = "0.1.0", path = "../../../lazytool" }
 rand = "0.8.5"
 regex = "1.11.1"
+settings = { version = "0.1.0", path = "../bili-settings" }

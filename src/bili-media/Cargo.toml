@@ -10,3 +10,4 @@ lazytool = { version = "0.1.0", path = "../../../lazytool" }
 rand = "0.8.5"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.135"
+settings = { version = "0.1.0", path = "../bili-settings" }

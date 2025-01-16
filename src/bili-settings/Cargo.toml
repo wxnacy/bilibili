@@ -1,0 +1,10 @@
+[package]
+name = "settings"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+config = "0.15.6"
+lazytool = { version = "0.1.1", path = "../../../lazytool" }
+serde = { version = "1.0.217", features = ["derive"] }
+toml = "0.8.19"

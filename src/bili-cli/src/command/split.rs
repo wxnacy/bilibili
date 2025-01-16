@@ -1,4 +1,4 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{fs, path::PathBuf};
 use bili_media::get_rand_part_path;
 
 use anyhow::Result;
@@ -56,14 +56,16 @@ pub fn split(args: SplitArgs) -> anyhow::Result<()> {
     for ts in split_ts {
         let part = bili_video::concat([
             ts.clone(),
-            get_rand_part_path("ipartment")?,
+            get_rand_part_path(vec!["ipartment"])?,
             // get_rand_part_path("lord_loser")?,
             // get_rand_part_path("feichai")?,
             // get_rand_part_path("longmen")?,
         ], ts.with_extension("mp4"))?;
         fs::remove_file(ts)?;
 
-        bili_video::screenshot(&part, part.with_extension("png"), 20.0)?;
+        bili_video::screenshot(&part, part.with_extension("png"), 10.0)?;
+        bili_video::screenshot(&part, part.with_extension("1.png"), 20.0)?;
+        bili_video::screenshot(&part, part.with_extension("2.png"), 30.0)?;
     }
     Ok(())
 }

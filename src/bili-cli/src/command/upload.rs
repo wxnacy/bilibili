@@ -1,12 +1,12 @@
-use std::{env, fs, os, path::{Path, PathBuf}};
-use bili_media::get_rand_part_path;
+use std::{fs, path::PathBuf};
 
 use anyhow::{anyhow, Result};
 
 use clap::{command, Parser};
-use lazytool::{expand_user, path::must_to_string, time};
+use lazytool::{path::must_to_string, time};
+use settings::Settings;
 
-use crate::{cache::{get_episode_name, CACHE_DIR}, create_cache_dir, get_episode_path};
+use crate::cache::get_episode_name;
 
 /// `upload` 命令的参数
 #[derive(Parser, Debug, Clone)]
@@ -67,7 +67,7 @@ impl UploadArgs {
     pub fn get_cache_dir(&self) -> Result<PathBuf> {
         let name = self.get_name();
         let mut names: Vec<String> = Vec::new();
-        let cache_dir = expand_user(CACHE_DIR);
+        let cache_dir = Settings::cache();
         for entry in fs::read_dir(&cache_dir)? {
             let entry = entry?;
             let path = entry.path();

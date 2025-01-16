@@ -1,27 +1,7 @@
-use std::{env, fs, path::{Path, PathBuf}, process, time::Instant};
+use std::{process, time::Instant};
 use bili_cli::{run, Cli};
 use clap::Parser;
 
-use bili_cli::create_cache_dir;
-
-
-fn split_and_concat<P: AsRef<Path>>(path: P) -> anyhow::Result<()> {
-    let filename = path.as_ref().file_name().unwrap();
-    let cache = create_cache_dir(filename)?;
-    let split_target = cache.join(filename);
-    let split_paths = bili_video::split(&path, &split_target, 4)?;
-    println!("{split_paths:#?}");
-    let mut concat_rs: Vec<String> = Vec::new();
-    for sp in split_paths {
-        let ts = bili_video::to_ts(sp, None)?;
-        concat_rs.push(ts.to_str().unwrap().to_string());
-        concat_rs.push("/Volumes/Getea/bili_cli/part/longmen/龙1.14.1.ts".to_string());
-    }
-
-    let target = cache.join("concat.mp4");
-    bili_video::concat(&concat_rs, &target.to_str().unwrap().to_string())?;
-    Ok(())
-}
 
 // fn main() {
     // let start = Instant::now();
