@@ -1,0 +1,5 @@
+[workspace]
+resolver        = "2"
+members         = [ "src/bili-*" ]
+default-members = [ "src/bili-cli"]
+

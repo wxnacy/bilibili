@@ -1,0 +1,18 @@
+[package]
+name = "bili-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bilibili"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.95"
+bili-media = { version = "0.1.0", path = "../bili-media" }
+bili-video = { version = "0.1.0", path = "../bili-video" }
+clap = { version = "4.5.26", features = ["derive"] }
+lazycmd = "0.1.0"
+lazytool = { version = "0.1.0", path = "../../../lazytool" }
+rand = "0.8.5"
+regex = "1.11.1"

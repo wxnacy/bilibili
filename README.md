@@ -1,2 +1,1 @@
-# bilibili
-Bilibili Manager
+# Bilibili Archive Manager
