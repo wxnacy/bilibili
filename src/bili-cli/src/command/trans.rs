@@ -10,6 +10,7 @@ use std::{fs, path::{Path, PathBuf}};
 use anyhow::Result;
 
 use clap::{command, Parser};
+use lazytool::path::{must_get_filename, must_to_string};
 use regex::Regex;
 
 
@@ -19,11 +20,16 @@ use regex::Regex;
 pub struct TransArgs {
     from: String,
 
+    // 动作
+    #[arg(short, long, default_value = "1080p", help="转码动作")]
+    pub action: String,
+
+    // 视频类型
     #[arg(short, long("type"), default_value = "电视剧", help="类型")]
     pub type_: String,
 
     // 剧名
-    #[arg(short, long, help="剧名")]
+    #[arg(short, long, help="剧名", default_value = "")]
     pub name: String,
 
     // 季数
@@ -132,9 +138,40 @@ impl TransArgs {
 
 /// `trans` 命令入口
 pub fn trans(args: TransArgs) -> anyhow::Result<()> {
-    let to = args.get_to()?;
-    println!("转码目标地址: {to:?}");
-    bili_video::transcode_1080(args.from, to)?;
+    match args.action.as_str() {
+
+        // mp4 视频转为指定 1080p 格式
+        "1080p" => {
+            let to = args.get_to()?;
+            println!("转码目标地址: {to:?}");
+            bili_video::transcode_1080(args.from, to)?;
+        },
+
+        // 将视频转为 mp4 格式
+        "mp4" => {
+            let from = Path::new(&args.from);
+            if from.is_dir() {
+                // 目录遍历文件在转码
+                for entry in fs::read_dir(from)? {
+                    let entry = entry?;
+                    let path = entry.path();
+                    let filename = must_get_filename(&path);
+                    if !filename.ends_with("mkv") {
+                        continue;
+                    }
+                    let to_path = path.with_extension("mp4");
+                    if to_path.exists() {
+                        continue;
+                    }
+                    bili_video::to_mp4(path, Some(to_path))?;
+                }
+            } else {
+                // 文件直接转码
+                bili_video::to_mp4(&args.from, None)?;
+            }
+        },
+        _ => eprintln!("action: {} not found", &args.action)
+    }
 
     Ok(())
 }

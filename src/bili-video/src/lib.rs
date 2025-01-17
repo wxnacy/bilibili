@@ -9,6 +9,7 @@ pub use spliter::{
 };
 pub use ffmpeg::{
     to_ts,
+    to_mp4,
     cut,
     cut_quick,
     concat,

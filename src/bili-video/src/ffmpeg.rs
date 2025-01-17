@@ -35,6 +35,38 @@ pub fn to_ts<P: AsRef<Path>>(from: P, to: Option<P>) -> Result<PathBuf> {
     Ok(PathBuf::from(to_path))
 }
 
+/// 视频转为 mp4
+///
+/// Examples
+///
+/// ```ignore
+/// use bili_video::to_mp4;
+///
+/// to_mp4("/tmp/test.mkv", None).unwrap()
+/// ```
+pub fn to_mp4<F>(from: F, to: Option<F>) -> Result<PathBuf>
+    where
+        F: AsRef<Path>,
+{
+
+    let from_path = get_path_string(&from)?;
+    let to_path;
+    if let Some(_to) = to {
+        to_path = must_to_string(_to.as_ref());
+    } else {
+        to_path = must_to_string(from.as_ref().with_extension("mp4"));
+    }
+    let cmds = [
+        "ffmpeg",
+        "-i", &from_path,
+        "-c:v", "copy",
+        "-c:a", "copy",
+        &to_path,
+    ];
+    lazycmd::spawn(cmds)?;
+    Ok(PathBuf::from(to_path))
+}
+
 /// 截取视频
 ///
 /// 可以使用关键帧技术进行截取，速度较慢
