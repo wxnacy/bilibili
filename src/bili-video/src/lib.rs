@@ -1,12 +1,17 @@
 mod models;
 mod ffmpeg;
+mod spliter;
 
 pub use models::Video;
+pub use spliter::{
+    Spliter,
+    split,
+};
 pub use ffmpeg::{
     to_ts,
     cut,
+    cut_quick,
     concat,
-    split,
     get_codec,
     screenshot,
     transcode_1080,

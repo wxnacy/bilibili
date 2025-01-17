@@ -1,9 +1,7 @@
-use std::{ffi::OsStr, fs, path::{Path, PathBuf}, time::{SystemTime, UNIX_EPOCH}};
+use std::{fs, path::{Path, PathBuf}, time::{SystemTime, UNIX_EPOCH}};
 
 use anyhow::{anyhow, Result};
 use lazytool::path::must_to_string;
-
-use crate::Video;
 
 /// 视频转为 ts
 ///
@@ -39,6 +37,8 @@ pub fn to_ts<P: AsRef<Path>>(from: P, to: Option<P>) -> Result<PathBuf> {
 
 /// 截取视频
 ///
+/// 可以使用关键帧技术进行截取，速度较慢
+///
 /// Examples
 ///
 /// ```ignore
@@ -56,17 +56,38 @@ pub fn cut<F, T>(from: F, to: T, start: f64, time: f64) -> Result<PathBuf>
     let to_path = to.as_ref().to_str().unwrap().to_string();
     let cmds = [
         "ffmpeg",
-        "-i", &from_path,
-        "-ss", &float_to_time_format(start),
-        "-t", &float_to_time_format(time),
-        "-c", "copy",
-        &to_path];
-    let cmds = [
-        "ffmpeg",
         "-ss", &float_to_time_format(start),
         "-t", &float_to_time_format(time),
         "-i", &from_path,
         "-copyts",
+        &to_path];
+    lazycmd::spawn(cmds)?;
+    Ok(to.as_ref().to_path_buf())
+}
+
+/// 截取视频(速度较快)
+///
+/// Examples
+///
+/// ```ignore
+/// use bili_video::cut_quick;
+///
+/// // 截取开始的 10 秒
+/// cut_quick("/tmp/test.mp4", None, 0, 10).unwrap()
+/// ```
+pub fn cut_quick<F, T>(from: F, to: T, start: f64, time: f64) -> Result<PathBuf>
+    where
+        F: AsRef<Path>,
+        T: AsRef<Path>,
+{
+    let from_path = get_path_string(&from)?;
+    let to_path = to.as_ref().to_str().unwrap().to_string();
+    let cmds = [
+        "ffmpeg",
+        "-i", &from_path,
+        "-ss", &float_to_time_format(start),
+        "-t", &float_to_time_format(time),
+        "-c", "copy",
         &to_path];
     lazycmd::spawn(cmds)?;
     Ok(to.as_ref().to_path_buf())
@@ -146,41 +167,6 @@ pub fn transcode_1080<F, T>(from: F, to: T) -> Result<()>
     Ok(())
 }
 
-/// 分割视频
-///
-/// Examples
-///
-/// ```ignore
-/// use bili_video::split;
-///
-/// // 拼接视频
-/// split("/tmp/test.mp4", "/tmp/target.mp4", 5).unwrap()
-/// ```
-pub fn split<F, T>(from: F, to: T, num_parts: usize) -> Result<Vec<PathBuf>>
-    where
-        F: AsRef<Path>,
-        T: AsRef<Path>,
-{
-    // 获取视频的总时长（假设视频时长已知或可通过其他方式获得）
-    let total_duration = Video::from(&from)?.duration; // 你需要实现这个方法以获取视频时长
-
-    // 计算每个部分的时长
-    let part_duration = total_duration / num_parts as f64;
-
-    // 创建一个存储输出路径的向量
-    let mut output_paths = Vec::with_capacity(num_parts);
-
-    for i in 0..num_parts {
-        let start_time = i as f64 * part_duration;
-        let output_path = to.as_ref().with_extension(format!("P{}.mp4", i + 1));
-
-        // 调用切割视频的方法
-        cut(&from, &output_path, start_time, part_duration)?;
-        output_paths.push(output_path);
-    }
-
-    Ok(output_paths)
-}
 
 /// 将时间浮点数转为时间格式字符串
 ///

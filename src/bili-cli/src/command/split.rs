@@ -3,6 +3,7 @@ use bili_media::get_rand_part_path;
 
 use anyhow::Result;
 
+use bili_video::Spliter;
 use clap::{command, Parser};
 
 use crate::{cache::get_episode_name, create_cache_dir, get_episode_path};
@@ -29,6 +30,10 @@ pub struct SplitArgs {
     // 数量
     #[arg(short, long, help="分割数量", default_value = "4")]
     pub count: usize,
+
+    // 是否使用快速分离
+    #[arg(short('q'), long, help="是否快速分离")]
+    pub with_quick: bool,
 }
 
 impl SplitArgs {
@@ -83,7 +88,11 @@ pub fn split_and_to_ts(args: &SplitArgs) -> Result<Vec<PathBuf>> {
 
     let split_target = cache.join(&target_name);
     // 分割
-    let split_paths = bili_video::split(&cache_path, split_target, args.count)?;
+    let mut s = Spliter::new(&cache_path);
+    let split_paths = s
+        .set_parts(args.count)
+        .with_quick(args.with_quick)
+        .output(split_target)?;
 
 
     let mut concat_rs: Vec<PathBuf> = Vec::new();
