@@ -1,5 +1,4 @@
 extern crate ffmpeg_next as ffmpeg;
-use ffmpeg::format::Pixel;
 use serde::{Serialize, Deserialize};
 
 use std::{error::Error, fmt, fs, path::Path};
