@@ -82,7 +82,10 @@ pub fn split_and_to_ts(args: &SplitArgs) -> Result<Vec<PathBuf>> {
     // let path = bili_video::concat([ts], cache.join(&target_name).with_extension("mp4"))?;
 
     let split_target = cache.join(&target_name);
+    // 分割
     let split_paths = bili_video::split(&cache_path, split_target, args.count)?;
+
+
     let mut concat_rs: Vec<PathBuf> = Vec::new();
     for sp in split_paths {
         let ts = bili_video::to_ts(&sp, None)?;

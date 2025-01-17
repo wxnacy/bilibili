@@ -64,9 +64,14 @@ impl Settings {
         Self::home().join("cache")
     }
 
+    pub fn cookie() -> PathBuf {
+        Self::home().join("cookie")
+    }
+
     pub fn part() -> PathBuf {
         Self::home().join("part.json")
     }
+
 }
 
 #[cfg(test)]

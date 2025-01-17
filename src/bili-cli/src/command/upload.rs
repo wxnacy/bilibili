@@ -122,7 +122,6 @@ impl UploadArgs {
 /// `split` 命令入口
 pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
 
-
     let upload_args = args.to_upload_args()?;
     println!("{upload_args:?}");
 
@@ -142,10 +141,12 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
     paths.sort();
     println!("{paths:#?}");
 
+    let cookie_path = Settings::cookie().join("3493118657694567.json");
+
     for path in paths {
         let mut cmds = vec![
             "biliup".to_string(),
-            "-u".to_string(), "/Users/wxnacy/.bilibili/cookie/3493118657694567.json".to_string(),
+            "-u".to_string(), must_to_string(&cookie_path),
             "upload".to_string(), must_to_string(&path),
         ];
         cmds.extend(upload_args.clone());

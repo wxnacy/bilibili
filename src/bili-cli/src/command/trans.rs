@@ -1,4 +1,11 @@
-use std::{env, fs, path::{Path, PathBuf}};
+//! 视频转码
+//!
+//! ```bash
+//! # 自动解析 episode
+//! cargo run -- trans "龙门镖局1.5/04.mp4" -n 龙门镖局 -s 3
+//! cargo run -- trans "龙门镖局.Longmen.Express.2013.E07.4K.2160p.HEVC.AAC-DHTCLUB.mp4" -n 龙门镖局
+//! ```
+use std::{fs, path::{Path, PathBuf}};
 
 use anyhow::Result;
 

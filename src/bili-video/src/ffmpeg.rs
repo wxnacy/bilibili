@@ -61,13 +61,13 @@ pub fn cut<F, T>(from: F, to: T, start: f64, time: f64) -> Result<PathBuf>
         "-t", &float_to_time_format(time),
         "-c", "copy",
         &to_path];
-    // let cmds = [
-        // "ffmpeg",
-        // "-ss", &float_to_time_format(start),
-        // "-t", &float_to_time_format(time),
-        // "-i", &from_path,
-        // "-copyts",
-        // &to_path];
+    let cmds = [
+        "ffmpeg",
+        "-ss", &float_to_time_format(start),
+        "-t", &float_to_time_format(time),
+        "-i", &from_path,
+        "-copyts",
+        &to_path];
     lazycmd::spawn(cmds)?;
     Ok(to.as_ref().to_path_buf())
 }
