@@ -44,7 +44,7 @@ pub struct UploadArgs {
     pub tid: u32,
 
     // 单视频文件最大并发数
-    #[arg(short, long, help="单视频文件最大并发数", default_value = "4")]
+    #[arg(short, long, help="单视频文件最大并发数", default_value = "8")]
     pub limit: u8,
 
     // 预发布时间
@@ -54,6 +54,10 @@ pub struct UploadArgs {
     // 描述
     #[arg(short, long, help="描述", default_value = "")]
     pub desc: String,
+
+    // 上传 up
+    #[arg(long, help="up mid")]
+    pub mid: Option<u64>,
 }
 
 
@@ -121,6 +125,8 @@ impl UploadArgs {
 
 /// `split` 命令入口
 pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
+    let stg = Settings::new()?;
+    let up = stg.get_up(args.mid).expect("Get up failed");
 
     let upload_args = args.to_upload_args()?;
     println!("{upload_args:?}");
@@ -141,47 +147,31 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
     paths.sort();
     println!("{paths:#?}");
 
-    let cookie_path = Settings::cookie().join("3493118657694567.json");
+
+    let cookie_path = up.get_cookie_path();
+    println!("上传 UP: {}({})", &up.name, &up.mid);
 
     for path in paths {
+        // 拼接参数
         let mut cmds = vec![
             "biliup".to_string(),
             "-u".to_string(), must_to_string(&cookie_path),
             "upload".to_string(), must_to_string(&path),
         ];
         cmds.extend(upload_args.clone());
+
+        // 拼接自动截图
         let image = path.with_extension("png");
-        cmds.push("--cover".to_string());
-        cmds.push(must_to_string(image));
-        println!("{cmds:#?}");
+        if image.exists() {
+            cmds.push("--cover".to_string());
+            cmds.push(must_to_string(image));
+        }
+        println!("上传命令: {}", cmds.join(" "));
+
+        // 执行命令
         lazycmd::spawn(cmds)?;
     }
 
-    // let split_ts = split_and_to_ts(&args)?;
-    // println!("{split_ts:#?}");
-    // for ts in split_ts {
-        // bili_video::concat([
-            // ts.clone(),
-            // get_rand_part_path("ipartment")?,
-            // get_rand_part_path("longmen")?,
-        // ], ts.with_extension("mp4"))?;
-        // fs::remove_file(ts)?;
-    // }
     Ok(())
 }
 
-// pub fn split_and_to_ts(args: &SplitArgs) -> Result<Vec<PathBuf>> {
-    // let cache = args.get_cache_dir()?;
-
-    // let split_target = cache.join(args.get_name());
-    // let path = args.get_path()?;
-
-    // let split_paths = bili_video::split(&path, &split_target, args.count)?;
-    // let mut concat_rs: Vec<PathBuf> = Vec::new();
-    // for sp in split_paths {
-        // let ts = bili_video::to_ts(&sp, None)?;
-        // fs::remove_file(sp)?;
-        // concat_rs.push(ts);
-    // }
-    // Ok(concat_rs)
-// }

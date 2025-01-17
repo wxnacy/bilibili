@@ -25,9 +25,27 @@ pub struct App {
 
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
+pub struct Up {
+    // 多媒体目录
+    pub mid: u64,
+    pub name: String,
+    pub default: bool,
+}
+
+impl Up {
+    pub fn get_cookie_path(&self) -> PathBuf {
+        let name = format!("{}.json", &self.mid);
+        Settings::cookie().join(name)
+    }
+}
+
+
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
 pub struct Settings {
     pub app: App,
     pub part: Part,
+    pub up: Vec<Up>,
 }
 
 impl Settings {
@@ -72,6 +90,16 @@ impl Settings {
         Self::home().join("part.json")
     }
 
+    pub fn get_default_up(&self) -> Option<&Up> {
+        self.up.iter().filter(|x| x.default).next()
+    }
+
+    pub fn get_up(&self, mid: Option<u64>) -> Option<&Up> {
+        if let Some(id) = mid {
+            return self.up.iter().filter(|x| x.mid == id).next();
+        }
+        self.get_default_up()
+    }
 }
 
 #[cfg(test)]
