@@ -10,7 +10,7 @@ use std::{fs, path::{Path, PathBuf}};
 use anyhow::Result;
 
 use clap::{command, Parser};
-use lazytool::path::{must_get_filename, must_to_string};
+use lazytool::path::must_get_filename;
 use regex::Regex;
 
 

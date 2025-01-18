@@ -9,7 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.95"
-bili-media = { version = "0.1.0", path = "../bili-media" }
+media = { version = "0.1.0", path = "../bili-media" }
 bili-video = { version = "0.1.0", path = "../bili-video" }
 clap = { version = "4.5.26", features = ["derive"] }
 lazycmd = "0.1.0"

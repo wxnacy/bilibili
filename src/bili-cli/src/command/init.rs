@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use bili_media::init_part;
+use media::init_part;
 use clap::{command, Parser};
 
 /// `init` 命令的参数

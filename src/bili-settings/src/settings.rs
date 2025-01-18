@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf};
+use std::{env, path::{Path, PathBuf}};
 
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
@@ -59,7 +59,7 @@ impl Settings {
 
         Config::builder()
             // Start off by merging in the "default" configuration file
-            .add_source(File::with_name(&lazytool::path::must_to_string(config_path)))
+            .add_source(File::from(config_path))
             // Add in settings from the environment (with a prefix of APP)
             // Eg.. `APP_DEBUG=1 ./target/app` would set the `debug` key
             .add_source(Environment::with_prefix("BILI"))
@@ -73,6 +73,12 @@ impl Settings {
         // s.try_deserialize()
     }
 
+    pub fn build_config<P: AsRef<Path>>(path: P) -> Result<Config, ConfigError> {
+        Config::builder()
+            .add_source(File::from(path.as_ref()))
+            .build()
+    }
+
     pub fn home() -> PathBuf {
         let config_home = env::var("BILI_CONFIG_HOME").unwrap_or_else(|_| "~/.bilibili".into());
         lazytool::expand_user(config_home)
@@ -84,6 +90,10 @@ impl Settings {
 
     pub fn cookie() -> PathBuf {
         Self::home().join("cookie")
+    }
+
+    pub fn media() -> PathBuf {
+        Self::home().join("media")
     }
 
     pub fn part() -> PathBuf {

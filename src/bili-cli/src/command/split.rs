@@ -1,5 +1,5 @@
 use std::{fs, path::PathBuf};
-use bili_media::get_rand_part_path;
+use media::get_rand_part_path;
 
 use anyhow::Result;
 
@@ -21,11 +21,11 @@ pub struct SplitArgs {
 
     // 季数
     #[arg(short, long, help="季数", default_value = "1")]
-    pub season: u8,
+    pub season: u16,
 
     // 集数
     #[arg(short, long, help="集数")]
-    pub episode: u8,
+    pub episode: u16,
 
     // 数量
     #[arg(short, long, help="分割数量", default_value = "4")]
@@ -71,6 +71,9 @@ pub fn split(args: SplitArgs) -> anyhow::Result<()> {
         bili_video::screenshot(&part, part.with_extension("png"), 10.0)?;
         bili_video::screenshot(&part, part.with_extension("1.png"), 20.0)?;
         bili_video::screenshot(&part, part.with_extension("2.png"), 30.0)?;
+        bili_video::screenshot(&part, part.with_extension("3.png"), 180.0)?;
+        bili_video::screenshot(&part, part.with_extension("4.png"), 190.0)?;
+        bili_video::screenshot(&part, part.with_extension("5.png"), 200.0)?;
     }
     Ok(())
 }

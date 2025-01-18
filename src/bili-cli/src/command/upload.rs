@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 
 use clap::{command, Parser};
 use lazytool::{path::must_to_string, time};
+use media::MediaSettings;
 use settings::Settings;
 
 use crate::cache::get_episode_name;
@@ -15,17 +16,21 @@ pub struct UploadArgs {
     #[arg(short, long("type"), default_value = "电视剧", help="类型")]
     pub type_: String,
 
+    // 短命
+    #[arg(long, help="短名")]
+    pub short_name: String,
+
     // 剧名
-    #[arg(short, long, help="剧名")]
+    #[arg(short, long, help="剧名", default_value = "")]
     pub name: String,
 
     // 季数
     #[arg(short, long, help="季数", default_value = "1")]
-    pub season: u8,
+    pub season: u16,
 
     // 集数
     #[arg(short, long, help="集数")]
-    pub episode: u8,
+    pub episode: u16,
 
     // 数量
     #[arg(short, long, help="分割数量", default_value = "4")]
@@ -48,7 +53,7 @@ pub struct UploadArgs {
     pub limit: u8,
 
     // 预发布时间
-    #[arg(long, help="预发布时间")]
+    #[arg(long, help="预发布时间", default_value = "")]
     pub dtime: String,
 
     // 描述
@@ -125,6 +130,16 @@ impl UploadArgs {
 
 /// `split` 命令入口
 pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
+    let media = MediaSettings::new(&args.short_name)?;
+    let mut args = args.clone();
+    if args.name.is_empty() {
+        args.name = media.name.clone();
+    }
+    if let Some(uploader) = media.get_uploader(args.season, args.episode) {
+        if args.dtime.is_empty() {
+            args.dtime = uploader.dtime.clone();
+        }
+    }
     let stg = Settings::new()?;
     let up = stg.get_up(args.mid).expect("Get up failed");
 
