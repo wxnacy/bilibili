@@ -17,7 +17,7 @@ pub struct Uploader {
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
 pub struct MediaSettings {
-    pub name: String,
+    pub title: String,
     pub uploaders: Vec<Uploader>,
 }
 

@@ -7,41 +7,18 @@ use lazytool::{path::must_to_string, time};
 use media::MediaSettings;
 use settings::Settings;
 
-use crate::cache::get_episode_name;
 
+use super::model::EpisodeArgs;
 /// `upload` 命令的参数
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
-pub struct UploadArgs {
-    #[arg(short, long("type"), default_value = "电视剧", help="类型")]
-    pub type_: String,
-
-    // 短命
-    #[arg(long, help="短名")]
-    pub short_name: String,
-
-    // 剧名
-    #[arg(short, long, help="剧名", default_value = "")]
-    pub name: String,
-
-    // 季数
-    #[arg(short, long, help="季数", default_value = "1")]
-    pub season: u16,
-
-    // 集数
-    #[arg(short, long, help="集数")]
-    pub episode: u16,
-
-    // 数量
-    #[arg(short, long, help="分割数量", default_value = "4")]
-    pub part_num: usize,
-
+pub struct Uploader {
     // 封面
-    #[arg(short, long, help="封面", default_value = "")]
+    #[arg(short, long, help="封面", default_value_t)]
     pub cover: String,
 
     // 标签
-    #[arg(long, help="标签。用逗号隔开", default_value = "")]
+    #[arg(long, help="标签。用逗号隔开", default_value_t)]
     pub tag: String,
 
     // 分区
@@ -53,51 +30,29 @@ pub struct UploadArgs {
     pub limit: u8,
 
     // 预发布时间
-    #[arg(long, help="预发布时间", default_value = "")]
+    #[arg(long, help="预发布时间", default_value_t)]
     pub dtime: String,
 
     // 描述
-    #[arg(short, long, help="描述", default_value = "")]
+    #[arg(short, long, help="描述", default_value_t)]
     pub desc: String,
-
-    // 上传 up
-    #[arg(long, help="up mid")]
-    pub mid: Option<u64>,
 }
 
+impl Uploader {
 
-impl UploadArgs {
-    // pub fn get_path(&self) -> Result<PathBuf> {
-        // let path = get_episode_path(&self.type_, &self.name, self.season, self.episode);
-        // Ok(path)
-    // }
-
-    /// 获取分割视频的缓存目录
-    pub fn get_cache_dir(&self) -> Result<PathBuf> {
-        let name = self.get_name();
-        let mut names: Vec<String> = Vec::new();
-        let cache_dir = Settings::cache();
-        for entry in fs::read_dir(&cache_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            // 添加符合名称的目录
-            if path.file_name().unwrap().to_str().unwrap().starts_with(&name) {
-                names.push(must_to_string(path));
+    pub fn fill_with_media(&mut self, media: &MediaSettings, season: u16, episode: u16) -> &mut Self {
+        if self.tag.is_empty() {
+            self.tag = media.title.clone();
+        }
+        if let Some(uploader) = media.get_uploader(season, episode) {
+            if self.dtime.is_empty() {
+                self.dtime = uploader.dtime.clone();
             }
         }
-        if names.is_empty() {
-            return Err(anyhow!("{} can not found cache_dir", &name));
-        }
-        // 按照名称倒序
-        names.sort_by(|a, b| b.cmp(a));
-        Ok(cache_dir.join(&names[0]))
+        self
     }
 
-    pub fn get_name(&self) -> String {
-        get_episode_name(&self.name, self.season, self.episode)
-    }
-
-    pub fn to_upload_args(&self) -> Result<Vec<String>> {
+    pub fn to_args(&self) -> Result<Vec<String>> {
         let mut args = vec![
             String::from("--limit"), format!("{}", self.limit),
             String::from("--tid"), format!("{}", self.tid),
@@ -107,12 +62,10 @@ impl UploadArgs {
             args.push(self.cover.to_string());
         }
 
-        let mut tag = self.tag.clone();
-        if tag.is_empty() {
-            tag = self.name.clone();
+        if !self.tag.is_empty() {
+            args.push("--tag".to_string());
+            args.push(self.tag.to_string());
         }
-        args.push("--tag".to_string());
-        args.push(tag);
 
         if !self.desc.is_empty() {
             args.push("--desc".to_string());
@@ -128,25 +81,57 @@ impl UploadArgs {
     }
 }
 
+/// `upload` 命令的参数
+#[derive(Parser, Debug, Clone)]
+#[command(version, about, long_about = None)]
+pub struct UploadArgs {
+    // 短命
+    // #[arg(long, help="短名", default_value_t)]
+    // pub short_name: String,
+
+    // // 剧名
+    // #[arg(short, long, help="剧名", default_value_t)]
+    // pub name: String,
+
+    // // 季数
+    // #[arg(short, long, help="季数", default_value = "1")]
+    // pub season: u16,
+
+    // // 集数
+    // #[arg(short, long, help="集数")]
+    // pub episode: u16,
+
+    #[command(flatten)]
+    pub ep: EpisodeArgs,
+
+    #[command(flatten)]
+    pub upload: Uploader,
+
+    // 上传 up
+    #[arg(long, help="up mid")]
+    pub mid: Option<u64>,
+}
+
+
 /// `split` 命令入口
 pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
-    let media = MediaSettings::new(&args.short_name)?;
-    let mut args = args.clone();
-    if args.name.is_empty() {
-        args.name = media.name.clone();
+    // 名称和短名必须有一个
+    if args.ep.name.is_empty() && args.ep.title.is_empty() {
+        return Err(anyhow!("name or title must has value"));
     }
-    if let Some(uploader) = media.get_uploader(args.season, args.episode) {
-        if args.dtime.is_empty() {
-            args.dtime = uploader.dtime.clone();
-        }
+
+    let media = MediaSettings::new(&args.ep.name)?;
+    let mut upload = args.upload.clone();
+    upload.fill_with_media(&media, args.ep.season, args.ep.episode);
+
+    let mut ep = args.ep.clone();
+    if ep.title.is_empty() {
+        ep.title = media.title.clone();
     }
     let stg = Settings::new()?;
     let up = stg.get_up(args.mid).expect("Get up failed");
 
-    let upload_args = args.to_upload_args()?;
-    println!("{upload_args:?}");
-
-    let cache_dir = args.get_cache_dir()?;
+    let cache_dir = ep.get_cache_dir()?;
     println!("{cache_dir:?}");
 
     let mut paths: Vec<PathBuf> = Vec::new();
@@ -173,7 +158,7 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
             "-u".to_string(), must_to_string(&cookie_path),
             "upload".to_string(), must_to_string(&path),
         ];
-        cmds.extend(upload_args.clone());
+        cmds.extend(upload.to_args()?);
 
         // 拼接自动截图
         let image = path.with_extension("png");
