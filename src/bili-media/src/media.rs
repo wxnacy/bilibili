@@ -7,6 +7,16 @@ use settings::Settings;
 
 #[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
+pub struct MarkSettings {
+    // 多媒体目录
+    pub id: String,
+    pub title: String,
+    pub parts: Option<Vec<String>>,
+    pub suffix_parts: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[allow(unused)]
 pub struct SpliterSettings {
     // 多媒体目录
     pub season: Option<u16>,
@@ -57,10 +67,17 @@ pub struct Uploader {
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
 pub struct MediaSettings {
+    pub name: String,
     pub title: String,
+    pub suffix_parts: Option<Vec<String>>,
     pub uploaders: Vec<Uploader>,
     pub spliters: Option<Vec<SpliterSettings>>,
-    pub spliter: Option<SpliterSettings>
+    pub spliter: Option<SpliterSettings>,
+    pub marks: Option<Vec<MarkSettings>>,
+
+    // 配置
+    #[serde(skip)]
+    pub settings: Option<Settings>,
 }
 
 impl MediaSettings {
@@ -71,8 +88,13 @@ impl MediaSettings {
 
     pub fn from<P: AsRef<Path>>(path: P) -> Result<Self> {
         let c = Settings::build_config(path)?;
-        let s: Self = c.try_deserialize()?;
+        let mut s: Self = c.try_deserialize()?;
+        s.settings = Some(Settings::new()?);
         Ok(s)
+    }
+
+    pub fn settings(&self) -> &Settings {
+        self.settings.as_ref().expect("Failed get settings")
     }
 
     pub fn get_uploader(&self, season: u16, episode: u16) -> Option<&Uploader> {
@@ -106,4 +128,32 @@ impl MediaSettings {
         None
     }
 
+    /// 获取制作视频配置
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use media::MediaSettings;
+    ///
+    /// let media = MediaSettings::from("examples/media.toml").unwrap();
+    ///
+    /// let item = media.get_mark("2-14-1").unwrap();
+    /// assert_eq!(item.parts, Some(vec!["爱2.14.3".to_string(), "爱2.14.4".to_string()]));
+    /// assert_eq!(item.suffix_parts, Some(vec!["ipartment".to_string()]));
+    ///
+    /// let item = media.get_mark("2-14-2").unwrap();
+    /// assert_eq!(item.suffix_parts, Some(vec!["ipartment".to_string(), "longmen".to_string()]));
+    /// ```
+    pub fn get_mark(&self, id: &str) -> Option<MarkSettings> {
+        if let Some(marks) = &self.marks {
+            if let Some(mark) = marks.iter().find(|x| x.id == id) {
+                let mut mark = mark.clone();
+                if mark.suffix_parts.is_none() {
+                    mark.suffix_parts = self.suffix_parts.clone();
+                }
+                return Some(mark);
+            }
+        }
+        None
+    }
 }

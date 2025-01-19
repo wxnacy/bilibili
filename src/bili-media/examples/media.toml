@@ -1,4 +1,6 @@
+name = "media"
 title = "多媒体"
+suffix_parts = ["ipartment"]
 
 [spliter]
 suffix_parts = ["ipartment"]
@@ -13,3 +15,14 @@ remove_parts = [[0, 90]]
 season = 3
 episode = 6
 dtime = "2025-01-19 11:00:00"
+
+[[marks]]
+id = "2-14-1"
+title = "断网穿越主线"
+parts = ["爱2.14.3", "爱2.14.4"]
+
+[[marks]]
+id = "2-14-2"
+title = "断网穿越主线"
+parts = ["爱2.14.3"]
+suffix_parts = ["ipartment", "longmen"]

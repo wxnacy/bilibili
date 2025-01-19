@@ -8,6 +8,8 @@ use crate::command::{
     split, SplitArgs,
     init, InitArgs,
     upload, UploadArgs,
+    upload_file, UploadFileArgs,
+    mark, MarkArgs,
 };
 
 // `brew-cli` 客户端参数
@@ -53,6 +55,18 @@ pub enum Command {
         args:  UploadArgs,
     },
 
+    /// 上传
+    UploadFile {
+        #[command(flatten)]
+        args:  UploadFileArgs,
+    },
+
+    /// 制作
+    Mark {
+        #[command(flatten)]
+        args:  MarkArgs,
+    },
+
 }
 
 impl fmt::Display for Command {
@@ -62,6 +76,8 @@ impl fmt::Display for Command {
             Command::Split { .. } => write!(f, "split"),
             Command::Init { .. } => write!(f, "init"),
             Command::Upload { .. } => write!(f, "upload"),
+            Command::UploadFile { .. } => write!(f, "upload_file"),
+            Command::Mark { .. } => write!(f, "mark"),
         }
     }
 }
@@ -72,6 +88,8 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Split { args } => split(args),
         Command::Init { args } => init(args),
         Command::Upload { args } => upload(args),
+        Command::UploadFile { args } => upload_file(args),
+        Command::Mark { args } => mark(args),
     }
 }
 

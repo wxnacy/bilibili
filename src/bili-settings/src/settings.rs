@@ -14,6 +14,10 @@ impl Part {
     pub fn home(&self) -> PathBuf {
         PathBuf::from(&self.home)
     }
+
+    pub fn get_path(&self, name: &str, id: &str) -> PathBuf {
+        self.home().join(name).join(format!("{}.ts", id))
+    }
 }
 
 #[derive(Debug, Deserialize)]

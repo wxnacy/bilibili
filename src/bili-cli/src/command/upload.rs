@@ -13,6 +13,10 @@ use super::model::EpisodeArgs;
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
 pub struct Uploader {
+    // 地址
+    #[arg(short, long, help="地址", default_value_t)]
+    pub path: String,
+
     // 封面
     #[arg(short, long, help="封面", default_value_t)]
     pub cover: String,
@@ -36,9 +40,17 @@ pub struct Uploader {
     // 描述
     #[arg(short, long, help="描述", default_value_t)]
     pub desc: String,
+
+    // 上传 up
+    #[arg(long, help="up mid")]
+    pub mid: Option<u64>,
 }
 
 impl Uploader {
+
+    pub fn path(&self) -> PathBuf {
+        PathBuf::from(&self.path)
+    }
 
     pub fn fill_with_media(&mut self, media: &MediaSettings, season: u16, episode: u16) -> &mut Self {
         if self.tag.is_empty() {
@@ -78,6 +90,21 @@ impl Uploader {
             args.push(format!("{}", ts));
         }
         Ok(args)
+    }
+
+    pub fn to_cmds(&self) -> Result<Vec<String>> {
+        let settings = Settings::new()?;
+        let up = settings.get_up(self.mid).expect("Failed get up");
+        println!("上传 UP: {}({})", &up.name, &up.mid);
+        let cookie_path = up.get_cookie_path();
+        let mut cmds = vec![
+            "biliup".to_string(),
+            "-u".to_string(), must_to_string(&cookie_path),
+            "upload".to_string(), must_to_string(&self.path),
+        ];
+        cmds.extend(self.to_args()?);
+        println!("上传命令: {}", cmds.join(" "));
+        Ok(cmds)
     }
 }
 
