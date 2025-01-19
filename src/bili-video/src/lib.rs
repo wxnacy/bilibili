@@ -1,12 +1,14 @@
 mod models;
 mod ffmpeg;
 mod spliter;
+mod remover;
 
 pub use models::Video;
 pub use spliter::{
     Spliter,
     split,
 };
+pub use remover::Remover;
 pub use ffmpeg::{
     to_ts,
     to_mp4,
