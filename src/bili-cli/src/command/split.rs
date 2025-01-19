@@ -1,9 +1,9 @@
 use std::{fs, path::PathBuf};
-use media::{get_rand_part_path, MediaSettings};
+use bili_video::{Remover, Spliter};
+use media::{get_rand_part_path, MediaSettings, SpliterSettings};
 
 use anyhow::Result;
 
-use bili_video::Spliter;
 use clap::{command, Parser};
 
 use super::model::EpisodeArgs;
@@ -37,12 +37,12 @@ pub fn split(args: SplitArgs) -> anyhow::Result<()> {
     if ep.title.is_empty() {
         ep.title = media.title.clone();
     }
-    args.ep = ep;
+    args.ep = ep.clone();
 
-    let spliter = media.spliter.expect("toml not found spliter");
+    let spliter = media.get_spliter(ep.season, ep.episode).unwrap();
     let suffix_parts = spliter.suffix_parts.clone().expect("toml not found suffix_parts");
 
-    let split_ts = split_and_to_ts(&args)?;
+    let split_ts = split_and_to_ts(&args, &spliter)?;
     println!("{split_ts:#?}");
     for ts in split_ts {
 
@@ -55,23 +55,34 @@ pub fn split(args: SplitArgs) -> anyhow::Result<()> {
 
         // 对分割后的视频截图
         for (index, second) in spliter.screenshot_seconds().iter().enumerate() {
-            bili_video::screenshot(&part, part.with_extension(format!("{}.png", index)), *second)?;
+            bili_video::screenshot(&part, part.with_extension(format!("{}.png", index)), (*second) as f64)?;
         }
     }
     Ok(())
 }
 
-pub fn split_and_to_ts(args: &SplitArgs) -> Result<Vec<PathBuf>> {
+pub fn split_and_to_ts(
+    args: &SplitArgs,
+    spliter: &SpliterSettings,
+) -> Result<Vec<PathBuf>> {
     let ep = args.ep.clone();
     let cache = ep.create_cache_dir()?;
     let target_name = ep.get_name();
 
     let origin_path = ep.get_path()?;
-    let cache_path = cache.join(&target_name).with_extension("mp4");
+    let mut cache_path = cache.join(&target_name).with_extension("mp4");
     fs::copy(&origin_path, &cache_path)?;
-    // let remove_path = bili_video::cut(cache_path, cache.join(args.get_name()).with_extension("remove-op.mp4"), 90.0, 2490.0)?;
-    // let ts = bili_video::to_ts(&remove_op_path, None)?;
-    // let path = bili_video::concat([ts], cache.join(&target_name).with_extension("mp4"))?;
+
+    // 判断是否去掉片头片尾
+    if let Some(remove_parts) = &spliter.remove_parts {
+        if !remove_parts.is_empty() {
+            let remove_part_path = cache.join(&target_name).with_extension("remove.mp4");
+            let mut r = Remover::new(&cache_path, remove_parts.to_vec());
+            r.with_quick(args.with_quick).output(&remove_part_path)?;
+            fs::remove_file(&cache_path)?;
+            cache_path = remove_part_path;
+        }
+    }
 
     let split_target = cache.join(&target_name);
     // 分割
