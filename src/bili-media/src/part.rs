@@ -50,11 +50,11 @@ pub fn init_part() -> Result<()> {
     Ok(())
 }
 
-pub fn get_rand_part_path(names: Vec<&str>) -> Result<PathBuf> {
+pub fn get_rand_part_path(names: Vec<String>) -> Result<PathBuf> {
     let json_str = fs::read_to_string(Settings::part())?;
     let parts: Vec<Part> = serde_json::from_str(&json_str)?;
     for part in parts {
-        if names.contains(&part.name.as_str()) {
+        if names.contains(&part.name) {
             let videos = part.videos;
             let mut rng = rand::thread_rng();
             let video = videos.choose(&mut rng).expect("rand part video failed");

@@ -6,12 +6,12 @@ use clap::{command, Parser};
 use lazytool::path::must_to_string;
 use settings::Settings;
 
-use crate::cache::get_episode_name;
+use crate::{cache::get_episode_name, create_cache_dir, get_episode_path};
 
 
 /// `EpisodeArgs` 命令的参数
 #[derive(Parser, Debug, Clone)]
-#[command(version, about, long_about = None)]
+#[command(about, long_about = None)]
 pub struct EpisodeArgs {
     #[arg(long("type"), default_value = "电视剧", help="类型")]
     pub type_: String,
@@ -37,6 +37,17 @@ impl EpisodeArgs {
 
     pub fn get_name(&self) -> String {
         get_episode_name(&self.title, self.season, self.episode)
+    }
+
+    pub fn get_path(&self) -> Result<PathBuf> {
+        let path = get_episode_path(&self.type_, &self.title, self.season, self.episode);
+        Ok(path)
+    }
+
+    /// 创建临时目录
+    pub fn create_cache_dir(&self) -> Result<PathBuf> {
+        let dir = create_cache_dir(self.get_name())?;
+        Ok(dir)
     }
 
     /// 获取分割视频的缓存目录

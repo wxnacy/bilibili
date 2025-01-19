@@ -85,21 +85,6 @@ impl Uploader {
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
 pub struct UploadArgs {
-    // 短命
-    // #[arg(long, help="短名", default_value_t)]
-    // pub short_name: String,
-
-    // // 剧名
-    // #[arg(short, long, help="剧名", default_value_t)]
-    // pub name: String,
-
-    // // 季数
-    // #[arg(short, long, help="季数", default_value = "1")]
-    // pub season: u16,
-
-    // // 集数
-    // #[arg(short, long, help="集数")]
-    // pub episode: u16,
 
     #[command(flatten)]
     pub ep: EpisodeArgs,
