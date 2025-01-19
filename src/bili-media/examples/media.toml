@@ -1,0 +1,15 @@
+title = "多媒体"
+
+[spliter]
+suffix_parts = ["ipartment"]
+screenshot_seconds = [10, 20, 30]
+
+[[spliters]]
+season = 3
+episode = 12
+remove_parts = [[0, 90]]
+
+[[uploaders]]
+season = 3
+episode = 6
+dtime = "2025-01-19 11:00:00"
