@@ -120,8 +120,8 @@ pub struct UploadArgs {
     pub upload: Uploader,
 
     // 上传 up
-    #[arg(long, help="up mid")]
-    pub mid: Option<u64>,
+    // #[arg(long, help="up mid")]
+    // pub mid: Option<u64>,
 }
 
 
@@ -140,8 +140,6 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
     if ep.title.is_empty() {
         ep.title = media.title.clone();
     }
-    let stg = Settings::new()?;
-    let up = stg.get_up(args.mid).expect("Get up failed");
 
     let cache_dir = ep.get_cache_dir()?;
     println!("{cache_dir:?}");
@@ -160,27 +158,17 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
     println!("{paths:#?}");
 
 
-    let cookie_path = up.get_cookie_path();
-    println!("上传 UP: {}({})", &up.name, &up.mid);
-
     for path in paths {
-        // 拼接参数
-        let mut cmds = vec![
-            "biliup".to_string(),
-            "-u".to_string(), must_to_string(&cookie_path),
-            "upload".to_string(), must_to_string(&path),
-        ];
-        cmds.extend(upload.to_args()?);
+        upload.path = must_to_string(&path);
 
         // 拼接自动截图
         let image = path.with_extension("png");
         if image.exists() {
-            cmds.push("--cover".to_string());
-            cmds.push(must_to_string(image));
+            upload.cover = must_to_string(image);
         }
-        println!("上传命令: {}", cmds.join(" "));
 
         // 执行命令
+        let cmds = upload.to_cmds()?;
         lazycmd::spawn(cmds)?;
     }
 
