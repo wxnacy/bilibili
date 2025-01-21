@@ -4,9 +4,10 @@ use anyhow::{anyhow, Result};
 
 use clap::{command, Parser};
 use lazytool::path::must_to_string;
+use media::MediaSettings;
 use settings::Settings;
 
-use crate::{cache::get_episode_name, create_cache_dir, get_episode_path};
+use crate::{cache::get_episode_name, create_cache_dir};
 
 
 /// `EpisodeArgs` 命令的参数
@@ -40,7 +41,12 @@ impl EpisodeArgs {
     }
 
     pub fn get_path(&self) -> Result<PathBuf> {
-        let path = get_episode_path(&self.type_, &self.title, self.season, self.episode);
+        let media = MediaSettings::new(&self.name)?;
+        let path = media.media_dir()
+            .join(&self.type_)
+            .join(&media.title)
+            .join(format!("{}{}", &media.title, &self.season))
+            .join(format!("S{:02}E{:02}.mp4", &self.season, &self.episode));
         Ok(path)
     }
 

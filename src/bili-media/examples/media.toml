@@ -5,10 +5,17 @@ suffix_parts = ["ipartment"]
 [spliter]
 suffix_parts = ["ipartment"]
 screenshot_seconds = [10, 20, 30]
+count = 5
+
+[[spliters]]
+season = 3
+count = 2
+remove_parts = [[0, 90]]
 
 [[spliters]]
 season = 3
 episode = 12
+count = 3
 remove_parts = [[0, 90]]
 
 [[uploaders]]

@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
@@ -69,6 +69,7 @@ pub struct Uploader {
 pub struct MediaSettings {
     pub name: String,
     pub title: String,
+    pub media_dir: Option<String>,
     pub suffix_parts: Option<Vec<String>>,
     pub uploaders: Vec<Uploader>,
     pub spliters: Option<Vec<SpliterSettings>>,
@@ -83,10 +84,10 @@ pub struct MediaSettings {
 impl MediaSettings {
     pub fn new(name: &str) -> Result<Self> {
         let path = Settings::media().join(format!("{}.toml", name));
-        Self::from(path)
+        Self::from_path(path)
     }
 
-    pub fn from<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let c = Settings::build_config(path)?;
         let mut s: Self = c.try_deserialize()?;
         s.settings = Some(Settings::new()?);
@@ -95,6 +96,12 @@ impl MediaSettings {
 
     pub fn settings(&self) -> &Settings {
         self.settings.as_ref().expect("Failed get settings")
+    }
+
+    /// 获取媒体存储位置
+    pub fn media_dir(&self) -> PathBuf {
+        let media = self.media_dir.clone().ok_or(&self.settings().app.media_dir).unwrap();
+        PathBuf::from(media)
     }
 
     pub fn get_uploader(&self, season: u16, episode: u16) -> Option<&Uploader> {
@@ -108,17 +115,30 @@ impl MediaSettings {
     /// ```
     /// use media::MediaSettings;
     ///
-    /// let media = MediaSettings::from("examples/media.toml").unwrap();
+    /// let media = MediaSettings::from_path("examples/media.toml").unwrap();
     ///
     /// let spliter = media.get_spliter(3, 12).unwrap();
     /// assert_eq!(spliter.remove_parts, Some(vec![(0, 90)]));
     /// assert_eq!(spliter.screenshot_seconds, Some(vec![10, 20, 30]));
-    /// assert_eq!(spliter.suffix_parts, Some(vec!["ipartment"]));
+    /// assert_eq!(spliter.suffix_parts, Some(vec!["ipartment".to_string()]));
+    /// assert_eq!(spliter.count, Some(3));
+    ///
+    /// let spliter = media.get_spliter(3, 11).unwrap();
+    /// assert_eq!(spliter.count, Some(2));
+    ///
+    /// let spliter = media.get_spliter(4, 11).unwrap();
+    /// assert_eq!(spliter.count, Some(5));
     /// ```
     pub fn get_spliter(&self, season: u16, episode: u16) -> Option<SpliterSettings> {
+        // 使用基础分割器
         if let Some(spliter) = &self.spliter {
             let mut spliter = spliter.clone();
             if let Some(spliters) = &self.spliters {
+                // 查找每季分割器
+                if let Some(ep_spliter) = spliters.iter().find(|x| x.season == Some(season) && x.episode.is_none()) {
+                    spliter.merge_with(ep_spliter);
+                }
+                // 查找每集分割器
                 if let Some(ep_spliter) = spliters.iter().find(|x| x.season == Some(season) && x.episode == Some(episode)) {
                     spliter.merge_with(ep_spliter);
                 }
@@ -135,7 +155,7 @@ impl MediaSettings {
     /// ```
     /// use media::MediaSettings;
     ///
-    /// let media = MediaSettings::from("examples/media.toml").unwrap();
+    /// let media = MediaSettings::from_path("examples/media.toml").unwrap();
     ///
     /// let item = media.get_mark("2-14-1").unwrap();
     /// assert_eq!(item.parts, Some(vec!["爱2.14.3".to_string(), "爱2.14.4".to_string()]));

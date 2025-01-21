@@ -45,12 +45,14 @@ pub fn split(args: SplitArgs) -> anyhow::Result<()> {
     let split_ts = split_and_to_ts(&args, &spliter)?;
     println!("{split_ts:#?}");
     for ts in split_ts {
+        // 拼接后缀
+        let mut need_concat_ts = vec![ts.clone()];
+        for part in &suffix_parts {
+            need_concat_ts.push(get_rand_part_path(vec![part.to_string()])?);
+        }
 
         // 合并分割后的视频
-        let part = bili_video::concat([
-            ts.clone(),
-            get_rand_part_path(suffix_parts.clone())?,
-        ], ts.with_extension("mp4"))?;
+        let part = bili_video::concat(need_concat_ts, ts.with_extension("mp4"))?;
         fs::remove_file(ts)?;
 
         // 对分割后的视频截图
@@ -87,8 +89,13 @@ pub fn split_and_to_ts(
     let split_target = cache.join(&target_name);
     // 分割
     let mut s = Spliter::new(&cache_path);
+    let mut count = args.count;
+    // 如果配置中没有分割数量，使用参数中的配置
+    if spliter.count.is_some() {
+        count = spliter.count.unwrap();
+    }
     let split_paths = s
-        .set_parts(args.count)
+        .set_parts(count)
         .with_quick(args.with_quick)
         .output(split_target)?;
 

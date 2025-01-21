@@ -62,6 +62,5 @@ pub fn get_rand_part_path(names: Vec<String>) -> Result<PathBuf> {
             return Ok(path);
         }
     }
-
     Err(anyhow!("Part: {:?} not found", names))
 }
