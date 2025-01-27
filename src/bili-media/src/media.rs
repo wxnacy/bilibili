@@ -11,8 +11,29 @@ pub struct MarkSettings {
     // 多媒体目录
     pub id: String,
     pub title: String,
+    pub path: Option<PathBuf>,
     pub parts: Option<Vec<String>>,
     pub suffix_parts: Option<Vec<String>>,
+    pub with_suffix: Option<bool>,
+    pub exclude_segments: Option<Vec<(u64, u64)>>,
+    pub include_segments: Option<Vec<(u64, u64)>>,
+    pub trans_1080p: Option<bool>,
+}
+
+impl MarkSettings {
+    pub fn with_suffix(&self) -> bool {
+        match &self.with_suffix {
+            Some(p) => *p,
+            None => true,
+        }
+    }
+
+    pub fn trans_1080p(&self) -> bool {
+        match &self.trans_1080p {
+            Some(p) => *p,
+            None => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -154,6 +175,7 @@ impl MediaSettings {
     ///
     /// ```
     /// use media::MediaSettings;
+    /// use std::path::PathBuf;
     ///
     /// let media = MediaSettings::from_path("examples/media.toml").unwrap();
     ///
@@ -163,6 +185,15 @@ impl MediaSettings {
     ///
     /// let item = media.get_mark("2-14-2").unwrap();
     /// assert_eq!(item.suffix_parts, Some(vec!["ipartment".to_string(), "longmen".to_string()]));
+    /// assert!(item.with_suffix());
+    /// assert!(!item.trans_1080p());
+    ///
+    /// let item = media.get_mark("path").unwrap();
+    /// assert_eq!(item.path, Some(PathBuf::from("examples/data/trailer.mp4")));
+    /// assert!(!item.with_suffix());
+    /// assert!(item.trans_1080p());
+    /// assert_eq!(item.include_segments, Some(vec![(0, 90)]));
+    /// assert_eq!(item.exclude_segments, Some(vec![(0, 90)]));
     /// ```
     pub fn get_mark(&self, id: &str) -> Option<MarkSettings> {
         if let Some(marks) = &self.marks {

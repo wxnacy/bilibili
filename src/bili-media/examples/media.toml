@@ -33,3 +33,12 @@ id = "2-14-2"
 title = "断网穿越主线"
 parts = ["爱2.14.3"]
 suffix_parts = ["ipartment", "longmen"]
+
+[[marks]]
+id = "path"
+title = "断网穿越主线"
+path = "examples/data/trailer.mp4"
+with_suffix = false
+trans_1080p = true
+include_segments = [[0, 90]]
+exclude_segments = [[0, 90]]
