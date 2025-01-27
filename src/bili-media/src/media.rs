@@ -121,8 +121,10 @@ impl MediaSettings {
 
     /// 获取媒体存储位置
     pub fn media_dir(&self) -> PathBuf {
-        let media = self.media_dir.clone().ok_or(&self.settings().app.media_dir).unwrap();
-        PathBuf::from(media)
+        if let Some(_dir) = &self.media_dir {
+            return PathBuf::from(_dir);
+        }
+        PathBuf::from(&self.settings().app.media_dir)
     }
 
     pub fn get_uploader(&self, season: u16, episode: u16) -> Option<&Uploader> {
