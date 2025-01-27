@@ -17,6 +17,10 @@ pub struct SplitArgs {
     pub ep: EpisodeArgs,
 
     // 数量
+    #[arg(short, long, help="别名", default_value_t)]
+    pub alias: String,
+
+    // 数量
     #[arg(short, long, help="分割数量", default_value = "4")]
     pub count: usize,
 
@@ -69,7 +73,11 @@ pub fn split_and_to_ts(
 ) -> Result<Vec<PathBuf>> {
     let ep = args.ep.clone();
     let cache = ep.create_cache_dir()?;
-    let target_name = ep.get_name();
+    let mut target_name = ep.get_name();
+    // 使用别名
+    if !args.alias.is_empty() {
+        target_name = args.alias.clone();
+    }
 
     let origin_path = ep.get_path()?;
     let mut cache_path = cache.join(&target_name).with_extension("mp4");
