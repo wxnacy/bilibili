@@ -53,13 +53,21 @@ impl Uploader {
     }
 
     pub fn fill_with_media(&mut self, media: &MediaSettings, season: u16, episode: u16) -> &mut Self {
-        if self.tag.is_empty() {
-            self.tag = media.title.clone();
-        }
         if let Some(uploader) = media.get_uploader(season, episode) {
             if self.dtime.is_empty() {
-                self.dtime = uploader.dtime.clone();
+                if let Some(dtime) = uploader.dtime {
+                    self.dtime = dtime.clone();
+                }
             }
+
+            if self.tag.is_empty() {
+                if let Some(tag) = uploader.tag {
+                    self.tag = tag.clone();
+                }
+            }
+        }
+        if self.tag.is_empty() {
+            self.tag = media.title.clone();
         }
         self
     }

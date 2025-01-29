@@ -18,6 +18,15 @@ episode = 12
 count = 3
 remove_parts = [[0, 90]]
 
+# =====================
+# uploaders
+[uploader]
+tag = "电视剧,影视剪辑,龙门镖局"
+
+[[uploaders]]
+season = 3
+tag = "电视剧,影视剪辑,龙门镖局1.5,龙门镖局"
+
 [[uploaders]]
 season = 3
 episode = 6

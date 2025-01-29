@@ -75,13 +75,32 @@ impl SpliterSettings {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
-pub struct Uploader {
+pub struct UploaderSettings {
     // 多媒体目录
-    pub season: u16,
-    pub episode: u16,
-    pub dtime: String,
+    pub season: Option<u16>,
+    pub episode: Option<u16>,
+    pub dtime: Option<String>,
+    pub tag: Option<String>,
+}
+
+impl UploaderSettings {
+
+    pub fn merge_with(&mut self, other: &UploaderSettings) {
+        if other.season.is_some() {
+            self.season = other.season;
+        }
+        if other.episode.is_some() {
+            self.episode = other.episode;
+        }
+        if other.dtime.is_some() {
+            self.dtime = other.dtime.clone();
+        }
+        if other.tag.is_some() {
+            self.tag = other.tag.clone();
+        }
+    }
 }
 
 
@@ -92,7 +111,8 @@ pub struct MediaSettings {
     pub title: String,
     pub media_dir: Option<String>,
     pub suffix_parts: Option<Vec<String>>,
-    pub uploaders: Vec<Uploader>,
+    pub uploader: Option<UploaderSettings>,
+    pub uploaders: Option<Vec<UploaderSettings>>,
     pub spliters: Option<Vec<SpliterSettings>>,
     pub spliter: Option<SpliterSettings>,
     pub marks: Option<Vec<MarkSettings>>,
@@ -127,8 +147,41 @@ impl MediaSettings {
         PathBuf::from(&self.settings().app.media_dir)
     }
 
-    pub fn get_uploader(&self, season: u16, episode: u16) -> Option<&Uploader> {
-        self.uploaders.iter().find(|x| x.season == season && x.episode == episode)
+    /// 获取上传信息
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use media::MediaSettings;
+    ///
+    /// let media = MediaSettings::from_path("examples/media.toml").unwrap();
+    ///
+    /// let uploader = media.get_uploader(3, 6).unwrap();
+    /// assert_eq!(uploader.tag, Some("电视剧,影视剪辑,龙门镖局".to_string()));
+    /// assert_eq!(uploader.dtime, Some("2025-01-19 11:00:00".to_string()));
+    ///
+    /// let uploader = media.get_uploader(3, 7).unwrap();
+    /// assert_eq!(uploader.tag, Some("电视剧,影视剪辑,龙门镖局1.5,龙门镖局".to_string()));
+    /// assert_eq!(uploader.dtime, None);
+    /// ```
+    pub fn get_uploader(&self, season: u16, episode: u16) -> Option<UploaderSettings> {
+        if let Some(uploader) = &self.uploader {
+            let mut uploader = uploader.clone();
+            if let Some(uploaders) = &self.uploaders {
+                // 查找每集上传器
+                if let Some(up) = uploaders.iter().find(|x| x.season == Some(season) && x.episode == Some(episode)) {
+                    uploader.merge_with(up);
+                    return Some(uploader);
+                }
+                // 查找每季上传器
+                if let Some(up) = uploaders.iter().find(|x| x.season == Some(season) && x.episode.is_none()) {
+                    uploader.merge_with(up);
+                    return Some(uploader);
+                }
+            }
+            return Some(uploader);
+        }
+        None
     }
 
     /// 获取分割信息，拼接主题剧集
