@@ -35,5 +35,5 @@ pub fn get_episode_name(
     season: u16,
     episode: u16,
 ) -> String {
-    String::from(format!("{}S{:02}E{:02}", name, season, episode))
+    format!("{}S{:02}E{:02}", name, season, episode)
 }

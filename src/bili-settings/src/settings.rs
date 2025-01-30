@@ -24,7 +24,7 @@ impl Part {
 #[allow(unused)]
 pub struct App {
     // 多媒体目录
-    pub media_dir: String,
+    pub media_dir: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]

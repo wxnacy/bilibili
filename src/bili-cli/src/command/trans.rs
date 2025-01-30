@@ -12,29 +12,30 @@ use anyhow::Result;
 use clap::{command, Parser};
 use lazytool::path::must_get_filename;
 use regex::Regex;
+use settings::Settings;
 
 
 /// `trans` 命令的参数
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
 pub struct TransArgs {
-    from: String,
+    path: String,
 
     // 动作
     #[arg(short, long, default_value = "1080p", help="转码动作")]
     pub action: String,
 
     // 视频类型
-    #[arg(short, long("type"), default_value = "电视剧", help="类型")]
+    #[arg(long("type"), default_value = "电视剧", help="类型")]
     pub type_: String,
 
     // 剧名
-    #[arg(short, long, help="剧名", default_value = "")]
-    pub name: String,
+    #[arg(short, long, help="剧名", default_value_t)]
+    pub title: String,
 
     // 季数
     #[arg(short, long, help="季数", default_value = "1")]
-    pub season: u8,
+    pub season: u16,
 
     // 集数
     #[arg(short, long, help="集数")]
@@ -42,20 +43,26 @@ pub struct TransArgs {
 }
 
 impl TransArgs {
-    pub fn get_dir(&self) -> Result<PathBuf> {
-        let ep_dir_name = format!("{}{}", &self.name, self.season);
-        let dirname = format!(
-            "/Volumes/ZhiTai/Movies/{}/{}/{}",
-            &self.type_,
-            &self.name,
-            ep_dir_name,
-        );
-        let dirname = dirname.as_str();
-        let dir = Path::new(&dirname);
-        if !dir.exists() {
-            fs::create_dir_all(dir)?;
+    pub fn fill(&mut self) -> &mut Self {
+        if let Some(ep) = Episode::from_path(&self.path) {
+            self.season = ep.season;
+            self.episode = Some(ep.episode);
+            self.title = ep.title.clone();
         }
-        Ok(dir.to_path_buf())
+        self
+    }
+    pub fn get_dir(&self) -> Result<PathBuf> {
+        let settings = Settings::new()?;
+        let media_dir = settings.app.media_dir;
+        let dir = media_dir
+            .join(&self.type_)
+            .join(&self.title)
+            .join(format!("{}{}", &self.title, self.season));
+
+        if !dir.exists() {
+            fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
     }
 
     pub fn get_to(&self) -> Result<PathBuf> {
@@ -79,7 +86,7 @@ impl TransArgs {
     }
 
     pub fn get_episode_by_from(&self) -> Option<u16> {
-        let from_path = Path::new(&self.from);
+        let from_path = Path::new(&self.path);
         if from_path.is_file() {
             if let Some(filename) = from_path.file_name() {
                 if let Some(name) = filename.to_str() {
@@ -142,14 +149,16 @@ pub fn trans(args: TransArgs) -> anyhow::Result<()> {
 
         // mp4 视频转为指定 1080p 格式
         "1080p" => {
+            let mut args = args.clone();
+            args.fill();
             let to = args.get_to()?;
             println!("转码目标地址: {to:?}");
-            bili_video::transcode_1080(args.from, to)?;
+            bili_video::transcode_1080(args.path, to)?;
         },
 
         // 将视频转为 mp4 格式
         "mp4" => {
-            let from = Path::new(&args.from);
+            let from = Path::new(&args.path);
             if from.is_dir() {
                 // 目录遍历文件在转码
                 for entry in fs::read_dir(from)? {
@@ -167,11 +176,63 @@ pub fn trans(args: TransArgs) -> anyhow::Result<()> {
                 }
             } else {
                 // 文件直接转码
-                bili_video::to_mp4(&args.from, None)?;
+                bili_video::to_mp4(&args.path, None)?;
             }
         },
         _ => eprintln!("action: {} not found", &args.action)
     }
 
     Ok(())
+}
+
+
+#[derive(Parser, Debug, Clone)]
+pub struct Episode {
+    // 剧名
+    pub title: String,
+
+    // 季数
+    pub season: u16,
+
+    // 集数
+    pub episode: u16,
+}
+
+impl Episode {
+    /// 从地址中解析剧集信息
+    ///
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Option<Self> {
+        let filename = must_get_filename(path);
+        let pattern = r"^(.*?)S(\d{2})E(\d{2})\.mp4$";
+        let re = Regex::new(pattern).unwrap();
+
+        if let Some(caps) = re.captures(&filename) {
+            let title = &caps[1]; // 剧名
+            let season = &caps[2]; // 季数
+            let episode = &caps[3]; // 集数
+
+            return Some(Episode {
+                title: title.to_string(),
+                season: season.parse().unwrap(),
+                episode: episode.parse().unwrap(),
+            })
+        }
+        None
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::Episode;
+
+    #[test]
+    fn test_from_path() {
+        let path = "/Volumes/Getea/影片/电视剧/还珠格格/还珠格格S01.国语中字.无台标.1080P/还珠格格S02E02.mp4";
+        let item = Episode::from_path(path);
+        assert!(item.is_some());
+        if let Some(ep) = item {
+            assert_eq!(ep.title, "还珠格格".to_string());
+        }
+    }
 }
