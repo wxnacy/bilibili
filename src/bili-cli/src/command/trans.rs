@@ -10,7 +10,7 @@ use std::{fs, path::{Path, PathBuf}};
 use anyhow::Result;
 
 use clap::{command, Parser};
-use lazytool::path::must_get_filename;
+use lazytool::{path::must_get_filename, Episode};
 use regex::Regex;
 use settings::Settings;
 
@@ -43,13 +43,17 @@ pub struct TransArgs {
 }
 
 impl TransArgs {
-    pub fn fill(&mut self) -> &mut Self {
-        if let Some(ep) = Episode::from_path(&self.path) {
-            self.season = ep.season;
-            self.episode = Some(ep.episode);
-            self.title = ep.title.clone();
+    pub fn fill(&mut self) -> Result<&mut Self> {
+        if let Some(ep) = Episode::from_path(&self.path)? {
+            if let Some(season) = ep.season {
+                self.season = season;
+            }
+            if let Some(title) = ep.title {
+                self.title = title;
+            }
+            self.episode = ep.episode;
         }
-        self
+        Ok(self)
     }
     pub fn get_dir(&self) -> Result<PathBuf> {
         let settings = Settings::new()?;
@@ -183,56 +187,4 @@ pub fn trans(args: TransArgs) -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-
-#[derive(Parser, Debug, Clone)]
-pub struct Episode {
-    // 剧名
-    pub title: String,
-
-    // 季数
-    pub season: u16,
-
-    // 集数
-    pub episode: u16,
-}
-
-impl Episode {
-    /// 从地址中解析剧集信息
-    ///
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Option<Self> {
-        let filename = must_get_filename(path);
-        let pattern = r"^(.*?)S(\d{2})E(\d{2})\.mp4$";
-        let re = Regex::new(pattern).unwrap();
-
-        if let Some(caps) = re.captures(&filename) {
-            let title = &caps[1]; // 剧名
-            let season = &caps[2]; // 季数
-            let episode = &caps[3]; // 集数
-
-            return Some(Episode {
-                title: title.to_string(),
-                season: season.parse().unwrap(),
-                episode: episode.parse().unwrap(),
-            })
-        }
-        None
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::Episode;
-
-    #[test]
-    fn test_from_path() {
-        let path = "/Volumes/Getea/影片/电视剧/还珠格格/还珠格格S01.国语中字.无台标.1080P/还珠格格S02E02.mp4";
-        let item = Episode::from_path(path);
-        assert!(item.is_some());
-        if let Some(ep) = item {
-            assert_eq!(ep.title, "还珠格格".to_string());
-        }
-    }
 }
