@@ -5,6 +5,12 @@ use anyhow::Result;
 use serde::Deserialize;
 use settings::Settings;
 
+pub trait EpisodeSettings {
+    fn get_season(&self) -> Option<u16>;
+    fn get_episode(&self) -> Option<u16>;
+    fn merge_with(&mut self, other: &Self);
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
 pub struct MarkSettings {
@@ -36,7 +42,7 @@ impl MarkSettings {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[allow(unused)]
 pub struct SpliterSettings {
     // 多媒体目录
@@ -53,7 +59,19 @@ impl SpliterSettings {
         self.screenshot_seconds.clone().unwrap_or(vec![10, 20, 30, 300, 400, 500])
     }
 
-    pub fn merge_with(&mut self, other: &SpliterSettings) {
+}
+
+impl EpisodeSettings for SpliterSettings {
+
+    fn get_episode(&self) -> Option<u16> {
+        self.episode
+    }
+
+    fn get_season(&self) -> Option<u16> {
+        self.season
+    }
+
+    fn merge_with(&mut self, other: &SpliterSettings) {
         if other.season.is_some() {
             self.season = other.season;
         }
@@ -75,7 +93,38 @@ impl SpliterSettings {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
+#[allow(unused)]
+pub struct TransSettings {
+    // 多媒体目录
+    pub season: Option<u16>,
+    pub episode: Option<u16>,
+    pub exclude_segments: Option<Vec<(u64, u64)>>,
+}
+
+impl EpisodeSettings for TransSettings {
+    fn get_season(&self) -> Option<u16> {
+        self.season
+    }
+
+    fn get_episode(&self) -> Option<u16> {
+        self.episode
+    }
+
+    fn merge_with(&mut self, other: &TransSettings) {
+        if other.season.is_some() {
+            self.season = other.season;
+        }
+        if other.episode.is_some() {
+            self.episode = other.episode;
+        }
+        if other.exclude_segments.is_some() {
+            self.exclude_segments = other.exclude_segments.clone();
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
 #[allow(unused)]
 pub struct UploaderSettings {
     // 多媒体目录
@@ -85,9 +134,17 @@ pub struct UploaderSettings {
     pub tag: Option<String>,
 }
 
-impl UploaderSettings {
+impl EpisodeSettings for UploaderSettings {
 
-    pub fn merge_with(&mut self, other: &UploaderSettings) {
+    fn get_season(&self) -> Option<u16> {
+        self.season
+    }
+
+    fn get_episode(&self) -> Option<u16> {
+        self.episode
+    }
+
+    fn merge_with(&mut self, other: &UploaderSettings) {
         if other.season.is_some() {
             self.season = other.season;
         }
@@ -111,10 +168,20 @@ pub struct MediaSettings {
     pub title: String,
     pub media_dir: Option<String>,
     pub suffix_parts: Option<Vec<String>>,
+
+    // 转码配置
+    pub tran: Option<TransSettings>,
+    pub trans: Option<Vec<TransSettings>>,
+
+    // 上传配置
     pub uploader: Option<UploaderSettings>,
     pub uploaders: Option<Vec<UploaderSettings>>,
+
+    // 分割配置
     pub spliters: Option<Vec<SpliterSettings>>,
     pub spliter: Option<SpliterSettings>,
+
+    // 制作配置
     pub marks: Option<Vec<MarkSettings>>,
 
     // 配置
@@ -157,31 +224,19 @@ impl MediaSettings {
     /// let media = MediaSettings::from_path("examples/media.toml").unwrap();
     ///
     /// let uploader = media.get_uploader(3, 6).unwrap();
-    /// assert_eq!(uploader.tag, Some("电视剧,影视剪辑,龙门镖局".to_string()));
+    /// assert_eq!(uploader.tag, Some("电视剧,影视剪辑,龙门镖局1.5,龙门镖局".to_string()));
     /// assert_eq!(uploader.dtime, Some("2025-01-19 11:00:00".to_string()));
     ///
     /// let uploader = media.get_uploader(3, 7).unwrap();
     /// assert_eq!(uploader.tag, Some("电视剧,影视剪辑,龙门镖局1.5,龙门镖局".to_string()));
     /// assert_eq!(uploader.dtime, None);
+    ///
+    /// let uploader = media.get_uploader(2, 7).unwrap();
+    /// assert_eq!(uploader.tag, Some("电视剧,影视剪辑,龙门镖局".to_string()));
+    /// assert_eq!(uploader.dtime, None);
     /// ```
     pub fn get_uploader(&self, season: u16, episode: u16) -> Option<UploaderSettings> {
-        if let Some(uploader) = &self.uploader {
-            let mut uploader = uploader.clone();
-            if let Some(uploaders) = &self.uploaders {
-                // 查找每集上传器
-                if let Some(up) = uploaders.iter().find(|x| x.season == Some(season) && x.episode == Some(episode)) {
-                    uploader.merge_with(up);
-                    return Some(uploader);
-                }
-                // 查找每季上传器
-                if let Some(up) = uploaders.iter().find(|x| x.season == Some(season) && x.episode.is_none()) {
-                    uploader.merge_with(up);
-                    return Some(uploader);
-                }
-            }
-            return Some(uploader);
-        }
-        None
+        self.get_episode_settings(season, episode, &self.uploader, &self.uploaders)
     }
 
     /// 获取分割信息，拼接主题剧集
@@ -201,27 +256,13 @@ impl MediaSettings {
     ///
     /// let spliter = media.get_spliter(3, 11).unwrap();
     /// assert_eq!(spliter.count, Some(2));
+    /// assert_eq!(spliter.remove_parts, Some(vec![(0, 80)]));
     ///
     /// let spliter = media.get_spliter(4, 11).unwrap();
     /// assert_eq!(spliter.count, Some(5));
     /// ```
     pub fn get_spliter(&self, season: u16, episode: u16) -> Option<SpliterSettings> {
-        // 使用基础分割器
-        if let Some(spliter) = &self.spliter {
-            let mut spliter = spliter.clone();
-            if let Some(spliters) = &self.spliters {
-                // 查找每季分割器
-                if let Some(ep_spliter) = spliters.iter().find(|x| x.season == Some(season) && x.episode.is_none()) {
-                    spliter.merge_with(ep_spliter);
-                }
-                // 查找每集分割器
-                if let Some(ep_spliter) = spliters.iter().find(|x| x.season == Some(season) && x.episode == Some(episode)) {
-                    spliter.merge_with(ep_spliter);
-                }
-            }
-            return Some(spliter);
-        }
-        None
+        self.get_episode_settings(season, episode, &self.spliter, &self.spliters)
     }
 
     /// 获取制作视频配置
@@ -261,5 +302,44 @@ impl MediaSettings {
             }
         }
         None
+    }
+
+    /// 获取转码视频配置
+    ///
+    /// ```
+    pub fn get_trans(&self, season: u16, episode: u16) -> Option<TransSettings> {
+        self.get_episode_settings(season, episode, &self.tran, &self.trans)
+    }
+
+    pub fn get_episode_settings<T: EpisodeSettings + Clone + Default>(
+        &self,
+        season: u16,
+        episode: u16,
+        stg: &Option<T>,
+        settings: &Option<Vec<T>>
+    ) -> Option<T> {
+        // config 有值时
+        let mut item = T::default();
+        let mut has = false;
+        if let Some(config) = stg {
+            item.merge_with(config);
+            has = true;
+        }
+
+        if let Some(configs) = settings {
+            // 查找每季
+            if let Some(ep) = configs.iter()
+                .find(|x| x.get_season() == Some(season) && x.get_episode().is_none()) {
+                item.merge_with(ep);
+                has = true;
+            }
+            // 查找每集
+            if let Some(ep) = configs.iter()
+                .find(|x| x.get_season() == Some(season) && x.get_episode() == Some(episode)) {
+                item.merge_with(ep);
+            has = true;
+            }
+        }
+        if has { Some(item) } else { None }
     }
 }

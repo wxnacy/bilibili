@@ -9,8 +9,10 @@ use std::{fs, path::{Path, PathBuf}};
 
 use anyhow::Result;
 
+use bili_video::Remover;
 use clap::{command, Parser};
 use lazytool::{path::must_get_filename, Episode};
+use media::MediaSettings;
 use regex::Regex;
 use settings::Settings;
 
@@ -32,6 +34,10 @@ pub struct TransArgs {
     // 剧名
     #[arg(short, long, help="剧名", default_value_t)]
     pub title: String,
+
+    // 剧名
+    #[arg(short, long, help="简称", default_value_t)]
+    pub name: String,
 
     // 季数
     #[arg(short, long, help="季数", default_value = "1")]
@@ -155,9 +161,26 @@ pub fn trans(args: TransArgs) -> anyhow::Result<()> {
         "1080p" => {
             let mut args = args.clone();
             args.fill();
+            let media = MediaSettings::new(&args.name)?;
+            if args.title.is_empty() {
+                args.title = media.title.clone();
+            }
+
             let to = args.get_to()?;
             println!("转码目标地址: {to:?}");
-            bili_video::transcode_1080(args.path, to)?;
+            bili_video::transcode_1080(args.path, &to)?;
+
+            let trans_settings = media.get_trans(args.season, args.episode.unwrap());
+            if let Some(settings) = trans_settings {
+                // 删减片段
+                if let Some(exclude) = settings.exclude_segments {
+                    let temp_path = to.with_extension("remove.mp4");
+                    fs::rename(&to, &temp_path)?;
+                    let r = Remover::new(&temp_path, exclude);
+                    r.output(to)?;
+                    fs::remove_file(&temp_path)?;
+                }
+            }
         },
 
         // 将视频转为 mp4 格式

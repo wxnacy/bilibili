@@ -10,7 +10,7 @@ count = 5
 [[spliters]]
 season = 3
 count = 2
-remove_parts = [[0, 90]]
+remove_parts = [[0, 80]]
 
 [[spliters]]
 season = 3
