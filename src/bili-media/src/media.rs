@@ -170,16 +170,14 @@ pub struct MediaSettings {
     pub suffix_parts: Option<Vec<String>>,
 
     // 转码配置
-    pub tran: Option<TransSettings>,
+    // pub tran: Option<TransSettings>,
     pub trans: Option<Vec<TransSettings>>,
 
     // 上传配置
-    pub uploader: Option<UploaderSettings>,
     pub uploaders: Option<Vec<UploaderSettings>>,
 
     // 分割配置
     pub spliters: Option<Vec<SpliterSettings>>,
-    pub spliter: Option<SpliterSettings>,
 
     // 制作配置
     pub marks: Option<Vec<MarkSettings>>,
@@ -236,7 +234,7 @@ impl MediaSettings {
     /// assert_eq!(uploader.dtime, None);
     /// ```
     pub fn get_uploader(&self, season: u16, episode: u16) -> Option<UploaderSettings> {
-        self.get_episode_settings(season, episode, &self.uploader, &self.uploaders)
+        self.get_episode_settings(season, episode, &None, &self.uploaders)
     }
 
     /// 获取分割信息，拼接主题剧集
@@ -262,7 +260,7 @@ impl MediaSettings {
     /// assert_eq!(spliter.count, Some(5));
     /// ```
     pub fn get_spliter(&self, season: u16, episode: u16) -> Option<SpliterSettings> {
-        self.get_episode_settings(season, episode, &self.spliter, &self.spliters)
+        self.get_episode_settings(season, episode, &None, &self.spliters)
     }
 
     /// 获取制作视频配置
@@ -308,7 +306,7 @@ impl MediaSettings {
     ///
     /// ```
     pub fn get_trans(&self, season: u16, episode: u16) -> Option<TransSettings> {
-        self.get_episode_settings(season, episode, &self.tran, &self.trans)
+        self.get_episode_settings(season, episode, &None, &self.trans)
     }
 
     pub fn get_episode_settings<T: EpisodeSettings + Clone + Default>(
@@ -327,6 +325,12 @@ impl MediaSettings {
         }
 
         if let Some(configs) = settings {
+            // 查找默认
+            if let Some(ep) = configs.iter()
+                .find(|x| x.get_season().is_none() && x.get_episode().is_none()) {
+                item.merge_with(ep);
+                has = true;
+            }
             // 查找每季
             if let Some(ep) = configs.iter()
                 .find(|x| x.get_season() == Some(season) && x.get_episode().is_none()) {

@@ -12,6 +12,7 @@ pub use remover::Remover;
 pub use ffmpeg::{
     to_ts,
     to_mp4,
+    to_mp3,
     cut,
     cut_quick,
     concat,

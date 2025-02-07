@@ -2,7 +2,7 @@ name = "media"
 title = "多媒体"
 suffix_parts = ["ipartment"]
 
-[spliter]
+[[spliters]]
 suffix_parts = ["ipartment"]
 screenshot_seconds = [10, 20, 30]
 count = 5
@@ -20,7 +20,7 @@ remove_parts = [[0, 90]]
 
 # =====================
 # uploaders
-[uploader]
+[[uploaders]]
 tag = "电视剧,影视剪辑,龙门镖局"
 
 [[uploaders]]
