@@ -1,6 +1,7 @@
 use std::{env, path::{Path, PathBuf}};
 
 use config::{Config, ConfigError, Environment, File};
+use lazytool::RegexParser;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -50,6 +51,7 @@ pub struct Settings {
     pub app: App,
     pub part: Part,
     pub up: Vec<Up>,
+    pub episode_regexs: Vec<RegexParser>,
 }
 
 impl Settings {

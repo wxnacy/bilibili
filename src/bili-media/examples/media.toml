@@ -2,6 +2,13 @@ name = "media"
 title = "多媒体"
 suffix_parts = ["ipartment"]
 
+# ====================
+# episode
+[[episodes]]
+season = 1
+episode = 2
+title = "标题"
+
 [[spliters]]
 suffix_parts = ["ipartment"]
 screenshot_seconds = [10, 20, 30]

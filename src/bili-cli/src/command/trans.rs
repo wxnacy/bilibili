@@ -19,6 +19,8 @@ use media::MediaSettings;
 use regex::Regex;
 use settings::Settings;
 
+use crate::command::model::EpisodeArgs;
+
 /// `trans` 命令的参数
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
@@ -52,114 +54,6 @@ pub struct TransArgs {
     // 转码地址
     #[arg(long, help = "转码地址")]
     pub to: Option<PathBuf>,
-}
-
-impl TransArgs {
-    pub fn fill(&mut self) -> Result<&mut Self> {
-        if let Some(ep) = Episode::from_path(&self.path)? {
-            if let Some(season) = ep.season {
-                self.season = season;
-            }
-            if let Some(title) = ep.title {
-                self.title = title;
-            }
-            self.episode = ep.episode;
-        }
-        Ok(self)
-    }
-    pub fn get_dir(&self) -> Result<PathBuf> {
-        let settings = Settings::new()?;
-        let media_dir = settings.app.media_dir;
-        let dir = media_dir
-            .join(&self.type_)
-            .join(&self.title)
-            .join(format!("{}{}", &self.title, self.season));
-
-        if !dir.exists() {
-            fs::create_dir_all(&dir)?;
-        }
-        Ok(dir)
-    }
-
-    pub fn get_to(&self) -> Result<PathBuf> {
-        let path = self.get_dir()?;
-        let path = path.join(format!(
-            "S{:02}E{:02}.mp4",
-            &self.season,
-            self.get_episode()
-        ));
-        Ok(path)
-    }
-
-    pub fn get_episode(&self) -> u16 {
-        // 如果传值直接返回
-        if let Some(episode) = &self.episode {
-            return *episode;
-        }
-
-        // 从名称中获取
-        if let Some(episode) = self.get_episode_by_from() {
-            return episode;
-        }
-
-        panic!("can not get episode")
-    }
-
-    pub fn get_episode_by_from(&self) -> Option<u16> {
-        let from_path = Path::new(&self.path);
-        if from_path.is_file() {
-            if let Some(filename) = from_path.file_name() {
-                if let Some(name) = filename.to_str() {
-                    return Self::match_episode(name);
-                }
-            }
-        }
-        None
-    }
-
-    /// 通过文件名匹配到剧集
-    ///
-    /// Examples
-    ///
-    /// ```
-    /// use bili_cli::command::TransArgs;
-    ///
-    /// let ep = TransArgs::match_episode("03.mp4");
-    /// assert_eq!(ep, Some(3));
-    ///
-    /// let ep = TransArgs::match_episode("龙门镖局.Longmen.Express.2013.E07.4K.2160p.HEVC.AAC-DHTCLUB.mp4");
-    /// assert_eq!(ep, Some(7));
-    /// ```
-    pub fn match_episode(filename: &str) -> Option<u16> {
-        // 使用文件名直接解析
-        if let Some(ep) = Self::match_episode_by_parse(filename) {
-            return Some(ep);
-        }
-        // 创建正则表达式以匹配 E 后跟数字的模式
-        let re = Regex::new(r"E(\d+)").unwrap();
-        // 使用正则表达式进行匹配
-        if let Some(captures) = re.captures(filename) {
-            // 捕获组 1 即为数字部分
-            if let Some(season_number) = captures.get(1) {
-                // 将字符串解析为 u8
-                return season_number.as_str().parse::<u16>().ok();
-            }
-        }
-        None // 返回 None 代表未找到季数信息
-    }
-
-    /// 直接解析名称
-    pub fn match_episode_by_parse(filename: &str) -> Option<u16> {
-        // 按照 "." 分割文件名
-        let parts: Vec<&str> = filename.split('.').collect();
-
-        // 获取文件名的第一部分（假设是数字）
-        if let Some(first_part) = parts.first() {
-            // 尝试将其解析为 u16
-            return first_part.parse::<u16>().ok();
-        }
-        None // 返回 None 代表未找到数字信息
-    }
 }
 
 /// `trans` 命令入口
@@ -233,18 +127,35 @@ impl Trans for Mp41080Trans {
 
     fn trans(&self, args: &TransArgs) -> Result<()> {
         let mut args = args.clone();
-        args.fill();
-        let media = MediaSettings::new(&args.name)?;
-        if args.title.is_empty() {
-            args.title = media.title.clone();
+        let settings = Settings::new()?;
+        let ep = Episode::from_path_with_regex(&args.path, settings.episode_regexs)?
+            .expect("parse episode failed");
+        if ep.title.is_none() ||
+            ep.season.is_none() ||
+                ep.episode.is_none() {
+            return Err(anyhow!("parse episode failed"));
         }
 
-        let to = args.get_to()?;
+        let ep_args = EpisodeArgs::new(
+            args.type_,
+            None,
+            ep.title.unwrap(),
+            ep.season.unwrap(),
+            ep.episode.unwrap());
+
+        println!("{ep_args:#?}");
+        let name = ep_args.get_name().expect("failed get name");
+        println!("{name}");
+
+        let media = MediaSettings::new(name)?;
+
+        let to = ep_args.get_path()?;
         println!("转码目标地址: {to:?}");
         bili_video::transcode_1080(args.path, &to)?;
 
-        let trans_settings = media.get_trans(args.season, args.episode.unwrap());
-        if let Some(settings) = trans_settings {
+        let episode_settings = media.get_episode(ep.season.unwrap(), ep.episode.unwrap());
+        println!("{episode_settings:#?}");
+        if let Some(settings) = episode_settings {
             // 删减片段
             if let Some(exclude) = settings.exclude_segments {
                 let temp_path = to.with_extension("remove.mp4");

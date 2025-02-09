@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde::Deserialize;
 use settings::Settings;
 
-pub trait EpisodeSettings {
+pub trait Episode {
     fn get_season(&self) -> Option<u16>;
     fn get_episode(&self) -> Option<u16>;
     fn merge_with(&mut self, other: &Self);
@@ -61,7 +61,7 @@ impl SpliterSettings {
 
 }
 
-impl EpisodeSettings for SpliterSettings {
+impl Episode for SpliterSettings {
 
     fn get_episode(&self) -> Option<u16> {
         self.episode
@@ -102,7 +102,7 @@ pub struct TransSettings {
     pub exclude_segments: Option<Vec<(u64, u64)>>,
 }
 
-impl EpisodeSettings for TransSettings {
+impl Episode for TransSettings {
     fn get_season(&self) -> Option<u16> {
         self.season
     }
@@ -126,15 +126,15 @@ impl EpisodeSettings for TransSettings {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[allow(unused)]
-pub struct UploaderSettings {
+pub struct EpisodeSettings {
     // 多媒体目录
     pub season: Option<u16>,
     pub episode: Option<u16>,
-    pub dtime: Option<String>,
-    pub tag: Option<String>,
+    pub title: Option<String>,
+    pub exclude_segments: Option<Vec<(u64, u64)>>,
 }
 
-impl EpisodeSettings for UploaderSettings {
+impl Episode for EpisodeSettings {
 
     fn get_season(&self) -> Option<u16> {
         self.season
@@ -144,7 +144,43 @@ impl EpisodeSettings for UploaderSettings {
         self.episode
     }
 
-    fn merge_with(&mut self, other: &UploaderSettings) {
+    fn merge_with(&mut self, other: &Self) {
+        if other.season.is_some() {
+            self.season = other.season;
+        }
+        if other.episode.is_some() {
+            self.episode = other.episode;
+        }
+        if other.title.is_some() {
+            self.title = other.title.clone();
+        }
+        if other.exclude_segments.is_some() {
+            self.exclude_segments = other.exclude_segments.clone();
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[allow(unused)]
+pub struct UploaderSettings {
+    // 多媒体目录
+    pub season: Option<u16>,
+    pub episode: Option<u16>,
+    pub dtime: Option<String>,
+    pub tag: Option<String>,
+}
+
+impl Episode for UploaderSettings {
+
+    fn get_season(&self) -> Option<u16> {
+        self.season
+    }
+
+    fn get_episode(&self) -> Option<u16> {
+        self.episode
+    }
+
+    fn merge_with(&mut self, other: &Self) {
         if other.season.is_some() {
             self.season = other.season;
         }
@@ -169,8 +205,10 @@ pub struct MediaSettings {
     pub media_dir: Option<String>,
     pub suffix_parts: Option<Vec<String>>,
 
+    // 剧集配置
+    pub episodes: Option<Vec<EpisodeSettings>>,
+
     // 转码配置
-    // pub tran: Option<TransSettings>,
     pub trans: Option<Vec<TransSettings>>,
 
     // 上传配置
@@ -309,7 +347,21 @@ impl MediaSettings {
         self.get_episode_settings(season, episode, &None, &self.trans)
     }
 
-    pub fn get_episode_settings<T: EpisodeSettings + Clone + Default>(
+    /// 获取视频配置
+    ///
+    /// ```
+    /// use media::MediaSettings;
+    ///
+    /// let media = MediaSettings::from_path("examples/media.toml").unwrap();
+    ///
+    /// let episode = media.get_episode(1, 2).unwrap();
+    /// assert_eq!(episode.title, Some("标题".to_string()));
+    /// ```
+    pub fn get_episode(&self, season: u16, episode: u16) -> Option<EpisodeSettings> {
+        self.get_episode_settings(season, episode, &None, &self.episodes)
+    }
+
+    pub fn get_episode_settings<T: Episode + Clone + Default>(
         &self,
         season: u16,
         episode: u16,

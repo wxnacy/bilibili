@@ -3,8 +3,7 @@ mod cli;
 pub mod command;
 
 pub use cache::{
-    create_cache_dir,
-    get_episode_path,
+    create_cache_dir
 };
 pub use cli::{
     run, Cli,

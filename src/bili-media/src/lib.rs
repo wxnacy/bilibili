@@ -4,6 +4,7 @@ mod media;
 pub use media::{
     MediaSettings,
     SpliterSettings,
+    EpisodeSettings,
     MarkSettings,
 };
 pub use part::{

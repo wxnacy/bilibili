@@ -11,29 +11,3 @@ pub fn create_cache_dir<T: AsRef<OsStr>>(name: T) -> anyhow::Result<PathBuf> {
     }
     Ok(cache)
 }
-
-pub fn get_episode_path(
-    type_: &str,
-    name: &str,
-    season: u16,
-    episode: u16,
-) -> PathBuf {
-    let path = format!(
-        "/Volumes/ZhiTai/Movies/{}/{}/{}{}/S{:02}E{:02}.mp4",
-        type_,
-        name,
-        name,
-        season,
-        season,
-        episode,
-    );
-    PathBuf::from(path)
-}
-
-pub fn get_episode_name(
-    name: &str,
-    season: u16,
-    episode: u16,
-) -> String {
-    format!("{}S{:02}E{:02}", name, season, episode)
-}

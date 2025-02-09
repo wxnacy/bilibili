@@ -7,7 +7,7 @@ use lazytool::path::must_to_string;
 use media::MediaSettings;
 use settings::Settings;
 
-use crate::{cache::get_episode_name, create_cache_dir};
+use crate::create_cache_dir;
 
 
 /// `EpisodeArgs` 命令的参数
@@ -36,12 +36,31 @@ pub struct EpisodeArgs {
 
 impl EpisodeArgs {
 
-    pub fn get_name(&self) -> String {
-        get_episode_name(&self.title, self.season, self.episode)
+    pub fn new(type_: String, name: Option<String>, title: String, season: u16, episode: u16) -> Self {
+        let mut n = "".to_string();
+        if let Some(name_) = name {
+            n = name_;
+        }
+        Self { type_, name: n, title, season, episode }
+    }
+
+    pub fn get_name(&self) -> Option<&str> {
+        if self.name.is_empty() {
+            match self.title.as_str() {
+                "爱情公寓" => Some("ipartment"),
+                _ => None,
+            }
+        } else {
+            Some(&self.name)
+        }
+    }
+
+    pub fn get_full_title(&self) -> String {
+        format!("{}S{:02}E{:02}", &self.title, self.season, self.episode)
     }
 
     pub fn get_path(&self) -> Result<PathBuf> {
-        let media = MediaSettings::new(&self.name)?;
+        let media = MediaSettings::new(self.get_name().expect("failed get name"))?;
         let path = media.media_dir()
             .join(&self.type_)
             .join(&media.title)
@@ -52,13 +71,13 @@ impl EpisodeArgs {
 
     /// 创建临时目录
     pub fn create_cache_dir(&self) -> Result<PathBuf> {
-        let dir = create_cache_dir(self.get_name())?;
+        let dir = create_cache_dir(self.get_full_title())?;
         Ok(dir)
     }
 
     /// 获取分割视频的缓存目录
     pub fn get_cache_dir(&self) -> Result<PathBuf> {
-        let name = self.get_name();
+        let name = self.get_full_title();
         let mut names: Vec<String> = Vec::new();
         let cache_dir = Settings::cache();
         for entry in fs::read_dir(&cache_dir)? {
