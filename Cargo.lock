@@ -129,7 +129,7 @@ version = "0.1.0"
 
 [[package]]
 name = "bili-cli"
-version = "0.1.9"
+version = "0.1.13"
 dependencies = [
  "anyhow",
  "bili-video",
@@ -139,6 +139,8 @@ dependencies = [
  "media",
  "rand",
  "regex",
+ "serde",
+ "serde_json",
  "settings",
 ]
 
@@ -602,21 +604,23 @@ dependencies = [
 
 [[package]]
 name = "lazycmd"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e65d5377f9a6b8acea4ba9d1154c5d1aebc4df8c29e473654fc7459f55a835a"
+checksum = "bfa28ae3b4dbef66650155586254f0cb9263749b36f06e1a2d4ce769c46dc726"
 dependencies = [
  "anyhow",
 ]
 
 [[package]]
 name = "lazytool"
-version = "0.1.4"
+version = "0.1.6"
 dependencies = [
  "anyhow",
  "chrono",
  "chrono-tz",
+ "once_cell",
  "regex",
+ "serde",
 ]
 
 [[package]]
@@ -697,9 +701,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.20.2"
+version = "1.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
+checksum = "945462a4b81e43c4e3ba96bd7b49d834c6f61198356aa858733bc4acf3cbe62e"
 
 [[package]]
 name = "ordered-multimap"
@@ -964,9 +968,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.135"
+version = "1.0.138"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b0d7ba2887406110130a978386c4e1befb98c674b4fba677954e4db976630d9"
+checksum = "d434192e7da787e94a6ea7e9670b26a036d0ca41e0b7efb2676dd32bae872949"
 dependencies = [
  "itoa",
  "memchr",

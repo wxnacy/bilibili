@@ -6,6 +6,9 @@ use clap::{command, Parser};
 use lazytool::{path::must_to_string, time};
 use media::MediaSettings;
 use settings::Settings;
+use regex::Regex;
+use serde_json::Value;
+use std::collections::HashMap;
 
 
 use super::model::EpisodeArgs;
@@ -44,6 +47,14 @@ pub struct Uploader {
     // 上传 up
     #[arg(long, help="up mid")]
     pub mid: Option<u64>,
+
+    // 是否添加到
+    #[arg(short('A'), long, help="是否快速分离")]
+    pub with_append: bool,
+
+    // vid bvid or aid
+    #[arg(short, long, help="视频id", default_value_t)]
+    pub vid: String,
 }
 
 impl Uploader {
@@ -100,16 +111,24 @@ impl Uploader {
         Ok(args)
     }
 
-    pub fn to_cmds(&self) -> Result<Vec<String>> {
+    pub fn to_cmds(&self, with_append: bool) -> Result<Vec<String>> {
         let settings = Settings::new()?;
         let up = settings.get_up(self.mid).expect("Failed get up");
         println!("上传 UP: {}({})", &up.name, &up.mid);
         let cookie_path = up.get_cookie_path();
+        let mut subcmd = "upload".to_string();
+        if with_append {
+            subcmd = "append".to_string();
+        }
         let mut cmds = vec![
             "biliup".to_string(),
             "-u".to_string(), must_to_string(&cookie_path),
-            "upload".to_string(), must_to_string(&self.path),
+            subcmd, must_to_string(&self.path),
         ];
+        if with_append {
+            cmds.push("-v".to_string());
+            cmds.push(self.vid.clone());
+        }
         cmds.extend(self.to_args()?);
         println!("上传命令: {}", cmds.join(" "));
         Ok(cmds)
@@ -127,9 +146,7 @@ pub struct UploadArgs {
     #[command(flatten)]
     pub upload: Uploader,
 
-    // 上传 up
-    // #[arg(long, help="up mid")]
-    // pub mid: Option<u64>,
+
 }
 
 
@@ -140,7 +157,7 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
         return Err(anyhow!("name or title must has value"));
     }
 
-    let media = MediaSettings::new(&args.ep.name)?;
+    let media = MediaSettings::new(&args.ep.get_name().expect("failed get name"))?;
     let mut upload = args.upload.clone();
     upload.fill_with_media(&media, args.ep.season, args.ep.episode);
 
@@ -166,7 +183,11 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
     println!("{paths:#?}");
 
 
-    for path in paths {
+    for (i, path) in paths.into_iter().enumerate() {
+        println!("bvid: {}", &upload.vid);
+        if i > 0 && upload.vid.is_empty() && args.upload.with_append {
+            return Err(anyhow!("not found bvid"));
+        }
         upload.path = must_to_string(&path);
 
         // 拼接自动截图
@@ -175,11 +196,49 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
             upload.cover = must_to_string(image);
         }
 
+        println!("upload: {:#?}", &upload);
         // 执行命令
-        let cmds = upload.to_cmds()?;
-        lazycmd::spawn(cmds)?;
+        let mut cmds = upload.to_cmds(false)?;
+        if i > 0 && args.upload.with_append {
+            cmds = upload.to_cmds(true)?;
+        }
+
+        let results = lazycmd::spawn(cmds)?;
+        // println!("{results:#?}");
+
+        if upload.vid.is_empty() {
+            for line in results {
+                if line.contains("code") && line.contains("message") {
+                    if let Some(res) = extract_json_from_log(&line) {
+                        if let Some(data) = res.get("data") {
+                            if let Some(b) = data.get("bvid") {
+                                upload.vid = b.to_string().replace("\"", "");
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(())
 }
 
+
+fn extract_json_from_log(log: &str) -> Option<HashMap<String, Value>> {
+    // 定义正则表达式来匹配 JSON 部分
+    let re = Regex::new(r"\{.*\}").unwrap();
+
+    // 使用正则表达式查找 JSON
+    if let Some(captures) = re.captures(log) {
+        // 获取匹配的字符串
+        let json_str = &captures[0];
+
+        // 解析 JSON 字符串为 HashMap
+        let parsed: HashMap<String, Value> = serde_json::from_str(json_str).ok()?;
+
+        Some(parsed)
+    } else {
+        None
+    }
+}

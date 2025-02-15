@@ -37,7 +37,7 @@ pub fn upload_file(args: UploadFileArgs) -> Result<()> {
         }
     }
 
-    let cmds = upload.to_cmds()?;
+    let cmds = upload.to_cmds(false)?;
     lazycmd::spawn(cmds)?;
 
     Ok(())
