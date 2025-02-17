@@ -44,6 +44,12 @@ impl Up {
     }
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(unused)]
+pub struct Media {
+    pub name: String,
+    pub title: String,
+}
 
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
@@ -52,6 +58,7 @@ pub struct Settings {
     pub part: Part,
     pub up: Vec<Up>,
     pub episode_regexs: Vec<RegexParser>,
+    pub medias: Vec<Media>,
 }
 
 impl Settings {
@@ -115,6 +122,10 @@ impl Settings {
             return self.up.iter().filter(|x| x.mid == id).next();
         }
         self.get_default_up()
+    }
+
+    pub fn get_media_by_title(&self, title: &str) -> Option<&Media> {
+        self.medias.iter().find(|x| x.title == title)
     }
 }
 
