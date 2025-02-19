@@ -113,7 +113,7 @@ pub fn split_and_to_ts(
     fs::copy(&origin_path, &cache_path)?;
 
     // 判断是否去掉片头片尾
-    if let Some(remove_parts) = &spliter.remove_parts {
+    if let Some(remove_parts) = &spliter.exclude_segments {
         if !remove_parts.is_empty() {
             println!("remove_parts {:?}", &remove_parts);
             let remove_part_path = cache.join(&target_name).with_extension("remove.mp4");

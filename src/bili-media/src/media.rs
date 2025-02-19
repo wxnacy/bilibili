@@ -51,7 +51,7 @@ pub struct SpliterSettings {
     pub count: Option<usize>,
     pub suffix_parts: Option<Vec<String>>,
     pub screenshot_seconds: Option<Vec<u64>>,
-    pub remove_parts: Option<Vec<(u64, u64)>>,
+    pub exclude_segments: Option<Vec<(u64, u64)>>,
 }
 
 impl SpliterSettings {
@@ -87,8 +87,8 @@ impl Episode for SpliterSettings {
         if other.screenshot_seconds.is_some() {
             self.screenshot_seconds = other.screenshot_seconds.clone();
         }
-        if other.remove_parts.is_some() {
-            self.remove_parts = other.remove_parts.clone();
+        if other.exclude_segments.is_some() {
+            self.exclude_segments = other.exclude_segments.clone();
         }
     }
 }

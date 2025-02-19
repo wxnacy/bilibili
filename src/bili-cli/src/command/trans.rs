@@ -16,7 +16,6 @@ use bili_video::Remover;
 use clap::{command, Parser};
 use lazytool::{path::must_get_filename, Episode};
 use media::MediaSettings;
-use regex::Regex;
 use settings::Settings;
 
 use crate::command::model::EpisodeArgs;
@@ -44,16 +43,20 @@ pub struct TransArgs {
     pub name: String,
 
     // 季数
-    #[arg(short, long, help = "季数", default_value = "1")]
+    #[arg(short, long, help = "季数", default_value_t)]
     pub season: u16,
 
     // 集数
-    #[arg(short, long, help = "集数")]
-    pub episode: Option<u16>,
+    #[arg(short, long, help = "集数", default_value_t)]
+    pub episode: u16,
 
     // 转码地址
     #[arg(long, help = "转码地址")]
     pub to: Option<PathBuf>,
+
+    // 是否执行
+    #[arg(short, long, help = "是否执行")]
+    pub yes: bool,
 }
 
 /// `trans` 命令入口
@@ -126,39 +129,29 @@ impl Trans for Mp41080Trans {
     }
 
     fn trans(&self, args: &TransArgs) -> Result<()> {
-        let mut args = args.clone();
-        let settings = Settings::new()?;
-        let ep = Episode::from_path_with_regex(&args.path, settings.episode_regexs)?
-            .expect("parse episode failed");
-        if ep.title.is_none() ||
-            ep.season.is_none() ||
-                ep.episode.is_none() {
-            return Err(anyhow!("parse episode failed"));
-        }
+        let ep = trans_to_episode(args)?;
 
-        let ep_args = EpisodeArgs::new(
-            args.type_,
-            None,
-            ep.title.unwrap(),
-            ep.season.unwrap(),
-            ep.episode.unwrap());
-
-        println!("{ep_args:#?}");
-        let name = ep_args.get_name().expect("failed get name");
+        println!("{ep:#?}");
+        let name = ep.get_name().expect("failed get name");
         println!("{name}");
 
-        let media = MediaSettings::new(name)?;
+        let media = MediaSettings::new(&name)?;
 
-        let to = ep_args.get_path()?;
+        let to = ep.get_path()?;
         println!("转码目标地址: {to:?}");
-        bili_video::transcode_1080(args.path, &to)?;
-
-        let episode_settings = media.get_episode(ep.season.unwrap(), ep.episode.unwrap());
+        let episode_settings = media.get_episode(ep.season, ep.episode);
         println!("{episode_settings:#?}");
+
+        if !args.yes {
+            return Ok(());
+        }
+
+        bili_video::transcode_1080(&args.path, &to)?;
+
         if let Some(settings) = episode_settings {
             // 删减片段
             if let Some(exclude) = settings.exclude_segments {
-                let temp_path = to.with_extension("remove.mp4");
+                let temp_path = to.with_extension("need-remove.mp4");
                 fs::rename(&to, &temp_path)?;
                 let r = Remover::new(&temp_path, exclude);
                 r.output(to)?;
@@ -177,3 +170,106 @@ fn get_trans(action: &str) -> Option<Box<dyn Trans>> {
         _ => None,
     }
 }
+
+fn trans_to_episode(args: &TransArgs) -> Result<EpisodeArgs> {
+    let settings = Settings::new()?;
+    let ep_opt = Episode::from_path_with_regex(&args.path, settings.episode_regexs)?;
+    let mut title = args.title.clone();
+    let mut season = args.season;
+    let mut episode = args.episode;
+
+    if let Some(ep) = ep_opt {
+        title = if let Some(title) = ep.title { title } else {args.title.clone()};
+        season = if let Some(season) = ep.season { season } else {args.season};
+        episode = if let Some(episode) = ep.episode { episode } else {args.episode};
+    }
+
+    if !args.title.is_empty() {
+        title = args.title.clone()
+    }
+
+    if args.season != 0 {
+        season = args.season
+    }
+
+    if args.episode != 0 {
+        episode = args.episode
+    }
+
+    let ep = EpisodeArgs::new(
+        args.type_.clone(),
+        None,
+        title,
+        season,
+        episode);
+    if ep.title.is_empty() ||
+        ep.season == 0 ||
+            ep.episode == 0 {
+        Err(anyhow!("parse episode failed"))
+    } else {
+        Ok(ep)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::{trans_to_episode, TransArgs};
+    use anyhow::Result;
+
+    fn new_trans(path: &str, title: &str, season: u16, episode: u16) -> TransArgs {
+        TransArgs {
+            path: path.to_string(),
+            action: "1080p".to_string(),
+            type_: "电视剧".to_string(),
+            title: title.to_string(),
+            name: String::new(),
+            season,
+            episode,
+            yes: false,
+            to: None
+        }
+    }
+
+    #[test]
+    fn test_trans_to_episode() -> Result<()>{
+        let args = &new_trans(
+            "/Volumes/Getea/影片/电视剧/医馆笑传/医馆笑传S02.37集.1080P/37.mp4",
+            "",
+            0,
+            0,
+        );
+
+        let ep = trans_to_episode(args)?;
+        assert_eq!(ep.title, String::from("医馆笑传"));
+        assert_eq!(ep.season, 2);
+        assert_eq!(ep.episode, 37);
+
+        let args = &new_trans(
+            "/Volumes/Getea/影片/电视剧/医馆笑传/医馆笑传S02.37集.1080P/37.mp4",
+            "美国队长",
+            1,
+            2,
+        );
+
+        let ep = trans_to_episode(args)?;
+        assert_eq!(ep.title, String::from("美国队长"));
+        assert_eq!(ep.season, 1);
+        assert_eq!(ep.episode, 2);
+
+        let args = &new_trans(
+            "/Volumes/ZhiTai/bilibili/cache/休息吧，托尼，这么多年辛苦了.mp4",
+            "美国队长",
+            1,
+            2,
+        );
+
+        let ep = trans_to_episode(args)?;
+        assert_eq!(ep.title, String::from("美国队长"));
+        assert_eq!(ep.season, 1);
+        assert_eq!(ep.episode, 2);
+
+        Ok(())
+    }
+}
+
