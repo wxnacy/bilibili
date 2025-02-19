@@ -139,6 +139,13 @@ impl Trans for Mp41080Trans {
 
         let to = ep.get_path()?;
         println!("转码目标地址: {to:?}");
+
+        // 创建目录
+        if let Some(to_dir) = to.parent() {
+            if !to_dir.exists() {
+                fs::create_dir_all(to_dir)?;
+            }
+        }
         let episode_settings = media.get_episode(ep.season, ep.episode);
         println!("{episode_settings:#?}");
 
