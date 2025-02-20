@@ -57,6 +57,10 @@ pub struct TransArgs {
     // 是否执行
     #[arg(short, long, help = "是否执行")]
     pub yes: bool,
+
+    // 是否保留片头片尾
+    #[arg(short('r'), long, help = "是否保留片头")]
+    pub is_reserve: bool,
 }
 
 /// `trans` 命令入口
@@ -131,6 +135,7 @@ impl Trans for Mp41080Trans {
     fn trans(&self, args: &TransArgs) -> Result<()> {
         let ep = trans_to_episode(args)?;
 
+        println!("{args:#?}");
         println!("{ep:#?}");
         let name = ep.get_name().expect("failed get name");
         println!("{name}");
@@ -156,13 +161,16 @@ impl Trans for Mp41080Trans {
         bili_video::transcode_1080(&args.path, &to)?;
 
         if let Some(settings) = episode_settings {
-            // 删减片段
-            if let Some(exclude) = settings.exclude_segments {
-                let temp_path = to.with_extension("need-remove.mp4");
-                fs::rename(&to, &temp_path)?;
-                let r = Remover::new(&temp_path, exclude);
-                r.output(to)?;
-                fs::remove_file(&temp_path)?;
+            // 判断是否保留片头
+            if !args.is_reserve {
+                // 删减片段
+                if let Some(exclude) = settings.exclude_segments {
+                    let temp_path = to.with_extension("need-remove.mp4");
+                    fs::rename(&to, &temp_path)?;
+                    let r = Remover::new(&temp_path, exclude);
+                    r.output(to)?;
+                    fs::remove_file(&temp_path)?;
+                }
             }
         }
         Ok(())
