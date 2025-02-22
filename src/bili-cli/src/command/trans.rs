@@ -192,6 +192,8 @@ fn trans_to_episode(args: &TransArgs) -> Result<EpisodeArgs> {
     let mut title = args.title.clone();
     let mut season = args.season;
     let mut episode = args.episode;
+    let mut type_ = args.type_.clone();
+    let mut name = String::new();
 
     if let Some(ep) = ep_opt {
         title = if let Some(title) = ep.title { title } else {args.title.clone()};
@@ -211,9 +213,14 @@ fn trans_to_episode(args: &TransArgs) -> Result<EpisodeArgs> {
         episode = args.episode
     }
 
+    if season > 1000 {
+        type_ = String::from("电影");
+        name = String::from("movie");
+    }
+
     let ep = EpisodeArgs::new(
-        args.type_.clone(),
-        None,
+        type_,
+        Some(name),
         title,
         season,
         episode);

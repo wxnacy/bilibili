@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, thread, time::Duration};
 
 use anyhow::{anyhow, Result};
 
@@ -220,6 +220,34 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
             }
         }
     }
+
+    let settings = Settings::new()?;
+    let up = settings.get_up(args.upload.mid).expect("Failed get up");
+    // println!("等待几秒钟刷新视频");
+    // thread::sleep(Duration::from_secs(5)); // 休眠 1 秒
+
+    // 更新视频
+    let cmds = vec![
+        "bili-cli".to_string(),
+        "archive".to_string(),
+        "refresh".to_string(),
+        up.mid.to_string(),
+        "--refresh-page".to_string(),
+        "1".to_string(),
+        "--page-size".to_string(),
+        "10".to_string(),
+    ];
+    println!("更新视频: {cmds:?}");
+    lazycmd::spawn(cmds)?;
+    // 打印视频列表
+    let cmds = vec![
+        "bili-cli".to_string(),
+        "archive".to_string(),
+        "list".to_string(),
+        up.mid.to_string()
+    ];
+    println!("展示视频: {cmds:?}");
+    lazycmd::spawn(cmds)?;
 
     Ok(())
 }
