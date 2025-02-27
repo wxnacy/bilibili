@@ -131,6 +131,7 @@ pub struct EpisodeSettings {
     pub season: Option<u16>,
     pub episode: Option<u16>,
     pub title: Option<String>,
+    pub tag: Option<String>,
     pub exclude_segments: Option<Vec<(u64, u64)>>,
 }
 
@@ -153,6 +154,9 @@ impl Episode for EpisodeSettings {
         }
         if other.title.is_some() {
             self.title = other.title.clone();
+        }
+        if other.tag.is_some() {
+            self.tag = other.tag.clone();
         }
         if other.exclude_segments.is_some() {
             self.exclude_segments = other.exclude_segments.clone();
@@ -296,6 +300,9 @@ impl MediaSettings {
     ///
     /// let spliter = media.get_spliter(4, 11).unwrap();
     /// assert_eq!(spliter.count, Some(5));
+    ///
+    /// let spliter = media.get_spliter(2009, 1201).unwrap();
+    /// assert_eq!(spliter.tag, Some("电影,喜剧,多线索叙事,黄渤,九孔,戎祥,高捷,王双宝,巴多,王迅".to_string()));
     /// ```
     pub fn get_spliter(&self, season: u16, episode: u16) -> Option<SpliterSettings> {
         self.get_episode_settings(season, episode, &None, &self.spliters)

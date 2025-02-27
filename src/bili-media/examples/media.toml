@@ -9,6 +9,18 @@ season = 1
 episode = 2
 title = "标题"
 
+[[episodes]]
+season = 2020
+episode = 6211
+title = "电影标题"
+
+[[episodes]]
+season = 2009
+episode = 1201
+title = "疯狂的赛车"
+tag = "电影,喜剧,多线索叙事,黄渤,九孔,戎祥,高捷,王双宝,巴多,王迅"
+exclude_segments = [[0, 36]]
+
 [[spliters]]
 suffix_parts = ["ipartment"]
 screenshot_seconds = [10, 20, 30]

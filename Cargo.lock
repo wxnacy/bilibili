@@ -159,7 +159,7 @@ version = "0.1.0"
 
 [[package]]
 name = "bili-cli"
-version = "0.1.17"
+version = "0.1.19"
 dependencies = [
  "anyhow",
  "bili-video",
@@ -656,7 +656,7 @@ dependencies = [
 
 [[package]]
 name = "lazytool"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "anyhow",
  "chrono",

@@ -73,7 +73,7 @@ pub fn trans(args: TransArgs) -> anyhow::Result<()> {
 }
 
 trait Trans {
-    fn get_action(&self) -> String;
+    // fn get_action(&self) -> String;
     fn trans(&self, args: &TransArgs) -> Result<()>;
 }
 
@@ -81,9 +81,9 @@ trait Trans {
 struct Mp3Trans {}
 
 impl Trans for Mp3Trans {
-    fn get_action(&self) -> String {
-        "mp3".to_string()
-    }
+    // fn get_action(&self) -> String {
+        // "mp3".to_string()
+    // }
 
     fn trans(&self, args: &TransArgs) -> Result<()> {
         bili_video::to_mp3(&args.path, args.to.clone()).map_err(|e| anyhow!("to mp3 failed: {}", e))?;
@@ -95,9 +95,9 @@ impl Trans for Mp3Trans {
 struct Mp4Trans {}
 
 impl Trans for Mp4Trans {
-    fn get_action(&self) -> String {
-        "mp4".to_string()
-    }
+    // fn get_action(&self) -> String {
+        // "mp4".to_string()
+    // }
 
     fn trans(&self, args: &TransArgs) -> Result<()> {
         let from = Path::new(&args.path);
@@ -128,9 +128,9 @@ impl Trans for Mp4Trans {
 struct Mp41080Trans {}
 
 impl Trans for Mp41080Trans {
-    fn get_action(&self) -> String {
-        "1080p".to_string()
-    }
+    // fn get_action(&self) -> String {
+        // "1080p".to_string()
+    // }
 
     fn trans(&self, args: &TransArgs) -> Result<()> {
         let ep = trans_to_episode(args)?;
@@ -197,6 +197,10 @@ fn trans_to_episode(args: &TransArgs) -> Result<EpisodeArgs> {
 
     if let Some(ep) = ep_opt {
         title = if let Some(title) = ep.title { title } else {args.title.clone()};
+        // 去掉标题后面的点
+        if title.ends_with(".") {
+            title = title.replace(".", "")
+        }
         season = if let Some(season) = ep.season { season } else {args.season};
         episode = if let Some(episode) = ep.episode { episode } else {args.episode};
     }
@@ -249,7 +253,8 @@ mod tests {
             season,
             episode,
             yes: false,
-            to: None
+            to: None,
+            is_reserve: false,
         }
     }
 

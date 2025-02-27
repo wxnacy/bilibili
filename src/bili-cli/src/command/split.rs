@@ -45,12 +45,10 @@ pub fn split(args: SplitArgs) -> anyhow::Result<()> {
     }
 
     let media = MediaSettings::new(&args.ep.get_name().expect("failed get name"))?;
-    if ep.title.is_empty() {
-        ep.title = media.title.clone();
-    }
+    ep.fill_from_media(&media);
     args.ep = ep.clone();
 
-    let mut spliter = media.get_spliter(ep.season, ep.episode).unwrap();
+    let spliter = media.get_spliter(ep.season, ep.episode).unwrap();
     println!("{spliter:#?}");
 
     // 封装分割数量

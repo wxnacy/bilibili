@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, thread, time::Duration};
+use std::{fs, path::PathBuf};
 
 use anyhow::{anyhow, Result};
 
@@ -64,6 +64,13 @@ impl Uploader {
     }
 
     pub fn fill_with_media(&mut self, media: &MediaSettings, season: u16, episode: u16) -> &mut Self {
+        if let Some(ep) = media.get_episode(season, episode) {
+            if self.tag.is_empty() {
+                if let Some(tag) = ep.tag {
+                    self.tag = tag.clone();
+                }
+            }
+        }
         if let Some(uploader) = media.get_uploader(season, episode) {
             if self.dtime.is_empty() {
                 if let Some(dtime) = uploader.dtime {
@@ -111,7 +118,11 @@ impl Uploader {
         Ok(args)
     }
 
-    pub fn to_cmds(&self, with_append: bool) -> Result<Vec<String>> {
+    pub fn to_cmds(
+        &self,
+        with_append: bool,
+        title: Option<&str>,
+    ) -> Result<Vec<String>> {
         let settings = Settings::new()?;
         let up = settings.get_up(self.mid).expect("Failed get up");
         println!("上传 UP: {}({})", &up.name, &up.mid);
@@ -128,6 +139,10 @@ impl Uploader {
         if with_append {
             cmds.push("-v".to_string());
             cmds.push(self.vid.clone());
+        }
+        if let Some(_title) = title {
+            cmds.push("--title".to_string());
+            cmds.push(_title.to_string());
         }
         cmds.extend(self.to_args()?);
         println!("上传命令: {}", cmds.join(" "));
@@ -149,6 +164,18 @@ pub struct UploadArgs {
 
 }
 
+impl UploadArgs {
+    pub fn fill(&mut self, media: &MediaSettings) -> &mut Self {
+        let mut ep = self.ep.clone();
+        ep.fill_from_media(media);
+        self.ep = ep.clone();
+        self
+    }
+    pub fn get_upload_title(&self) -> String {
+        self.ep.get_full_title()
+    }
+}
+
 
 /// `split` 命令入口
 pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
@@ -157,16 +184,15 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
         return Err(anyhow!("name or title must has value"));
     }
 
+    let mut args = args.clone();
+
     let media = MediaSettings::new(&args.ep.get_name().expect("failed get name"))?;
+    args.fill(&media);
+
     let mut upload = args.upload.clone();
     upload.fill_with_media(&media, args.ep.season, args.ep.episode);
 
-    let mut ep = args.ep.clone();
-    if ep.title.is_empty() {
-        ep.title = media.title.clone();
-    }
-
-    let cache_dir = ep.get_cache_dir()?;
+    let cache_dir = args.ep.get_cache_dir()?;
     println!("{cache_dir:?}");
 
     let mut paths: Vec<PathBuf> = Vec::new();
@@ -181,7 +207,8 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
     // paths.sort_by(|a, b| a.age.cmp(&b.age));
     paths.sort();
     println!("{paths:#?}");
-
+    // println!("{}", ep.get_full_title());
+    // return Ok(());
 
     for (i, path) in paths.into_iter().enumerate() {
         println!("bvid: {}", &upload.vid);
@@ -198,9 +225,16 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
 
         println!("upload: {:#?}", &upload);
         // 执行命令
-        let mut cmds = upload.to_cmds(false)?;
-        if i > 0 && args.upload.with_append {
-            cmds = upload.to_cmds(true)?;
+        // 如果上传整集设置第一个视频的标题
+
+        let mut cmds = upload.to_cmds(false, None)?;
+        if args.upload.with_append {
+            // 上传整集，第一个视频指定标题
+            if i == 0 {
+                cmds = upload.to_cmds(false, Some(&args.get_upload_title()))?;
+            } else {
+                cmds = upload.to_cmds(true, None)?;
+            }
         }
 
         let results = lazycmd::spawn(cmds)?;
@@ -234,8 +268,6 @@ pub fn upload(args: UploadArgs) -> anyhow::Result<()> {
         up.mid.to_string(),
         "--refresh-page".to_string(),
         "1".to_string(),
-        "--page-size".to_string(),
-        "10".to_string(),
     ];
     println!("更新视频: {cmds:?}");
     lazycmd::spawn(cmds)?;
@@ -268,5 +300,37 @@ fn extract_json_from_log(log: &str) -> Option<HashMap<String, Value>> {
         Some(parsed)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+    use media::MediaSettings;
+
+    use crate::command::UploadArgs;
+
+
+    #[test]
+    fn test_fill_from_media() {
+        let media = MediaSettings::from_path("../bili-media/examples/media.toml").unwrap();
+
+        let mut args = UploadArgs::try_parse_from([
+            "test",
+            "-n", "media",
+            "-e", "2",
+        ]).unwrap();
+        args.fill(&media);
+        assert_eq!(args.get_upload_title(), "多媒体S01E02");
+
+        let mut args = UploadArgs::try_parse_from([
+            "test",
+            "-n", "media",
+            "-s", "2020",
+            "-e", "6211",
+            "--type", "电影",
+        ]).unwrap();
+        args.fill(&media);
+        assert_eq!(args.get_upload_title(), "电影标题.2020.06211");
     }
 }
