@@ -43,6 +43,7 @@ pub fn to_ts<P: AsRef<Path>>(from: P, to: Option<P>) -> Result<PathBuf> {
 /// use bili_video::to_mp4;
 ///
 /// to_mp4("/tmp/test.mkv", None).unwrap()
+/// to_mp4("/tmp/test.m3u8", None).unwrap()
 /// ```
 pub fn to_mp4<F, T>(from: F, to: Option<T>) -> Result<PathBuf>
 where
@@ -56,9 +57,19 @@ where
     } else {
         to_path = must_to_string(from.as_ref().with_extension("mp4"));
     }
-    let cmds = [
-        "ffmpeg", "-i", &from_path, "-c:v", "copy", "-c:a", "copy", &to_path,
-    ];
+    let mut cmds = [
+        "ffmpeg",
+        "-i", &from_path,
+        "-c:v", "copy",
+        "-c:a", "copy",
+    ].to_vec();
+    // 如果是 m3u8 增加 -allowed_extensions ALL 表示允许所有扩展名，防止因扩展名问题导致读取 m3u8 文件失败接口
+    if from_path.ends_with(".m3u8") {
+        cmds.push("-allowed_extensions");
+        cmds.push("ALL");
+    }
+    cmds.push(&to_path);
+
     lazycmd::spawn(cmds)?;
     Ok(PathBuf::from(to_path))
 }
