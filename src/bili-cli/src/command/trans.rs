@@ -92,6 +92,17 @@ impl Trans for Mp3Trans {
 }
 
 #[derive(Debug)]
+struct M3U8Trans {}
+
+impl Trans for M3U8Trans {
+
+    fn trans(&self, args: &TransArgs) -> Result<()> {
+        bili_video::to_m3u8(&args.path, args.to.clone(), None)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
 struct Mp4Trans {}
 
 impl Trans for Mp4Trans {
@@ -182,6 +193,7 @@ fn get_trans(action: &str) -> Option<Box<dyn Trans>> {
         "mp3" => Some(Box::new(Mp3Trans {})),
         "mp4" => Some(Box::new(Mp4Trans {})),
         "1080p" => Some(Box::new(Mp41080Trans {})),
+        "m3u8" => Some(Box::new(M3U8Trans {})),
         _ => None,
     }
 }

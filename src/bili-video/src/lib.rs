@@ -11,6 +11,7 @@ pub use spliter::{
 pub use remover::Remover;
 pub use ffmpeg::{
     to_ts,
+    to_m3u8,
     to_mp4,
     to_mp3,
     cut,

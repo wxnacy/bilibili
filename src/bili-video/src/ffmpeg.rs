@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
-use lazytool::path::must_to_string;
+use lazytool::path::{must_get_filename, must_to_string};
 
 /// 视频转为 ts
 ///
@@ -31,6 +31,54 @@ pub fn to_ts<P: AsRef<Path>>(from: P, to: Option<P>) -> Result<PathBuf> {
         "ffmpeg", "-i", &from_path, "-codec", "copy", "-bsf:v", bsf_filter, "-f", "mpegts",
         &to_path,
     ];
+    lazycmd::spawn(cmds)?;
+    Ok(PathBuf::from(to_path))
+}
+
+/// 视频转为 m3u8
+///
+/// Examples
+///
+/// ```ignore
+/// use bili_video::to_m3u8;
+///
+/// to_m3u8("/tmp/test.mp4", None).unwrap()
+/// ```
+pub fn to_m3u8<F, T>(
+    from: F,
+    to: Option<T>,
+    hls_time: Option<u64>,
+) -> Result<PathBuf>
+where
+    F: AsRef<Path>,
+    T: AsRef<Path>,
+{
+    let from_path = get_path_string(&from)?;
+    let to_path;
+    if let Some(_to) = to {
+        to_path = must_to_string(_to.as_ref());
+    } else {
+        to_path = must_to_string(from.as_ref().with_extension("m3u8"));
+    }
+    let hls_t = hls_time.unwrap_or(10);
+    let hls_s = format!("{}", hls_t).clone();
+    // 使用 m3u8 文件名作为 ts 前缀
+    let ts_prefix = &to_path.trim_end_matches(".m3u8");
+    let ts_filename_template = format!("{}_{}.ts", ts_prefix, "%05d");
+    // -hls_time 6 设置每段 TS 文件的时长为 6 秒；
+    // -hls_list_size 0 表示在 M3U8 文件中保留所有 TS 文件的索引；
+    // -hls_allow_cache 1 允许客户端缓存 TS 文件；
+    // -hls_segment_filename 这个参数指定 TS 文件的命名模板
+    let cmds = [
+        "ffmpeg",
+        "-i", &from_path,
+        "-hls_time", hls_s.as_str(),
+        "-hls_list_size", "0",
+        "-hls_allow_cache", "1",
+        "-hls_segment_filename", &ts_filename_template,
+        &to_path,
+    ];
+
     lazycmd::spawn(cmds)?;
     Ok(PathBuf::from(to_path))
 }
