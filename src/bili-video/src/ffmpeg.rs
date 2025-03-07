@@ -107,16 +107,20 @@ where
     }
     let mut cmds = [
         "ffmpeg",
-        "-i", &from_path,
-        "-c:v", "copy",
-        "-c:a", "copy",
     ].to_vec();
     // 如果是 m3u8 增加 -allowed_extensions ALL 表示允许所有扩展名，防止因扩展名问题导致读取 m3u8 文件失败接口
+    // 需要放在 -i 参数之前
     if from_path.ends_with(".m3u8") {
         cmds.push("-allowed_extensions");
         cmds.push("ALL");
     }
-    cmds.push(&to_path);
+    cmds.extend([
+        "-i", &from_path,
+        "-c:v", "copy",
+        "-c:a", "copy",
+        &to_path
+    ]);
+    println!("{:?}", &cmds);
 
     lazycmd::spawn(cmds)?;
     Ok(PathBuf::from(to_path))
