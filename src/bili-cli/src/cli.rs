@@ -4,12 +4,8 @@ use anyhow::Result;
 use std::{fmt, path::PathBuf};
 
 use crate::command::{
-    trans, TransArgs,
-    split, SplitArgs,
-    init, InitArgs,
-    upload, UploadArgs,
-    upload_file, UploadFileArgs,
-    mark, MarkArgs,
+    init, mark, split, trans, upload, upload_file, remove,
+    InitArgs, MarkArgs, RemoveArgs, SplitArgs, TransArgs, UploadArgs, UploadFileArgs
 };
 
 // `brew-cli` 客户端参数
@@ -66,6 +62,11 @@ pub enum Command {
         #[command(flatten)]
         args:  MarkArgs,
     },
+    /// 制作
+    Remove {
+        #[command(flatten)]
+        args:  RemoveArgs,
+    },
 
 }
 
@@ -78,6 +79,7 @@ impl fmt::Display for Command {
             Command::Upload { .. } => write!(f, "upload"),
             Command::UploadFile { .. } => write!(f, "upload_file"),
             Command::Mark { .. } => write!(f, "mark"),
+            Command::Remove { .. } => write!(f, "remove"),
         }
     }
 }
@@ -90,6 +92,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Upload { args } => upload(args),
         Command::UploadFile { args } => upload_file(args),
         Command::Mark { args } => mark(args),
+        Command::Remove { args } => remove(args),
     }
 }
 
